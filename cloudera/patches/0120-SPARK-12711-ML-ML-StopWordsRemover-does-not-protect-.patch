@@ -1,0 +1,85 @@
+From 38fbe6ed2170427bba4f88686dd83a784de8e5db Mon Sep 17 00:00:00 2001
+From: Grzegorz Chilkiewicz <grzegorz.chilkiewicz@codilime.com>
+Date: Tue, 2 Feb 2016 11:16:24 -0800
+Subject: [PATCH 120/201] [SPARK-12711][ML] ML StopWordsRemover does not
+ protect itself from column name duplication
+
+Fixes problem and verifies fix by test suite.
+Also - adds optional parameter: nullable (Boolean) to: SchemaUtils.appendColumn
+and deduplicates SchemaUtils.appendColumn functions.
+
+Author: Grzegorz Chilkiewicz <grzegorz.chilkiewicz@codilime.com>
+
+Closes #10741 from grzegorz-chilkiewicz/master.
+
+(cherry picked from commit b1835d727234fdff42aa8cadd17ddcf43b0bed15)
+Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+(cherry picked from commit 9c0cf22f7681ae05d894ae05f6a91a9467787519)
+---
+ .../apache/spark/ml/feature/StopWordsRemover.scala |    4 +---
+ .../org/apache/spark/ml/util/SchemaUtils.scala     |    8 +++-----
+ .../spark/ml/feature/StopWordsRemoverSuite.scala   |   15 +++++++++++++++
+ 3 files changed, 19 insertions(+), 8 deletions(-)
+
+diff --git a/mllib/src/main/scala/org/apache/spark/ml/feature/StopWordsRemover.scala b/mllib/src/main/scala/org/apache/spark/ml/feature/StopWordsRemover.scala
+index 3188085..d9a9049 100644
+--- a/mllib/src/main/scala/org/apache/spark/ml/feature/StopWordsRemover.scala
++++ b/mllib/src/main/scala/org/apache/spark/ml/feature/StopWordsRemover.scala
+@@ -148,9 +148,7 @@ class StopWordsRemover(override val uid: String)
+     val inputType = schema($(inputCol)).dataType
+     require(inputType.sameType(ArrayType(StringType)),
+       s"Input type must be ArrayType(StringType) but got $inputType.")
+-    val outputFields = schema.fields :+
+-      StructField($(outputCol), inputType, schema($(inputCol)).nullable)
+-    StructType(outputFields)
++    SchemaUtils.appendColumn(schema, $(outputCol), inputType, schema($(inputCol)).nullable)
+   }
+ 
+   override def copy(extra: ParamMap): StopWordsRemover = defaultCopy(extra)
+diff --git a/mllib/src/main/scala/org/apache/spark/ml/util/SchemaUtils.scala b/mllib/src/main/scala/org/apache/spark/ml/util/SchemaUtils.scala
+index 76f6514..7decbbd 100644
+--- a/mllib/src/main/scala/org/apache/spark/ml/util/SchemaUtils.scala
++++ b/mllib/src/main/scala/org/apache/spark/ml/util/SchemaUtils.scala
+@@ -54,12 +54,10 @@ private[spark] object SchemaUtils {
+   def appendColumn(
+       schema: StructType,
+       colName: String,
+-      dataType: DataType): StructType = {
++      dataType: DataType,
++      nullable: Boolean = false): StructType = {
+     if (colName.isEmpty) return schema
+-    val fieldNames = schema.fieldNames
+-    require(!fieldNames.contains(colName), s"Column $colName already exists.")
+-    val outputFields = schema.fields :+ StructField(colName, dataType, nullable = false)
+-    StructType(outputFields)
++    appendColumn(schema, StructField(colName, dataType, nullable))
+   }
+ 
+   /**
+diff --git a/mllib/src/test/scala/org/apache/spark/ml/feature/StopWordsRemoverSuite.scala b/mllib/src/test/scala/org/apache/spark/ml/feature/StopWordsRemoverSuite.scala
+index fb217e0..a5b24c1 100644
+--- a/mllib/src/test/scala/org/apache/spark/ml/feature/StopWordsRemoverSuite.scala
++++ b/mllib/src/test/scala/org/apache/spark/ml/feature/StopWordsRemoverSuite.scala
+@@ -89,4 +89,19 @@ class StopWordsRemoverSuite
+       .setCaseSensitive(true)
+     testDefaultReadWrite(t)
+   }
++
++  test("StopWordsRemover output column already exists") {
++    val outputCol = "expected"
++    val remover = new StopWordsRemover()
++      .setInputCol("raw")
++      .setOutputCol(outputCol)
++    val dataSet = sqlContext.createDataFrame(Seq(
++      (Seq("The", "the", "swift"), Seq("swift"))
++    )).toDF("raw", outputCol)
++
++    val thrown = intercept[IllegalArgumentException] {
++      testStopWordsRemover(remover, dataSet)
++    }
++    assert(thrown.getMessage == s"requirement failed: Column $outputCol already exists.")
++  }
+ }
+-- 
+1.7.9.5
+

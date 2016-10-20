@@ -1,0 +1,63 @@
+From 6e715dde365f53809a30544eabec583ee39b8b0b Mon Sep 17 00:00:00 2001
+From: Shixiong Zhu <shixiong@databricks.com>
+Date: Mon, 22 Feb 2016 17:42:30 -0800
+Subject: [PATCH 170/201] [SPARK-13298][CORE][UI] Escape "label" to avoid DAG
+ being broken by some special character
+
+## What changes were proposed in this pull request?
+
+When there are some special characters (e.g., `"`, `\`) in `label`, DAG will be broken. This patch just escapes `label` to avoid DAG being broken by some special characters
+
+## How was the this patch tested?
+
+Jenkins tests
+
+Author: Shixiong Zhu <shixiong@databricks.com>
+
+Closes #11309 from zsxwing/SPARK-13298.
+
+(cherry picked from commit a11b3995190cb4a983adcc8667f7b316cce18d24)
+Signed-off-by: Andrew Or <andrew@databricks.com>
+(cherry picked from commit 85e6a2205d4549c81edbc2238fd15659120cee78)
+---
+ .../apache/spark/ui/scope/RDDOperationGraph.scala  |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/ui/scope/RDDOperationGraph.scala b/core/src/main/scala/org/apache/spark/ui/scope/RDDOperationGraph.scala
+index e9c8a8e..54ba03e 100644
+--- a/core/src/main/scala/org/apache/spark/ui/scope/RDDOperationGraph.scala
++++ b/core/src/main/scala/org/apache/spark/ui/scope/RDDOperationGraph.scala
+@@ -20,10 +20,11 @@ package org.apache.spark.ui.scope
+ import scala.collection.mutable
+ import scala.collection.mutable.{StringBuilder, ListBuffer}
+ 
++import org.apache.commons.lang3.StringEscapeUtils
++
+ import org.apache.spark.Logging
+ import org.apache.spark.scheduler.StageInfo
+ import org.apache.spark.storage.StorageLevel
+-import org.apache.spark.util.CallSite
+ 
+ /**
+  * A representation of a generic cluster graph used for storing information on RDD operations.
+@@ -179,7 +180,7 @@ private[ui] object RDDOperationGraph extends Logging {
+   /** Return the dot representation of a node in an RDDOperationGraph. */
+   private def makeDotNode(node: RDDOperationNode): String = {
+     val label = s"${node.name} [${node.id}]\n${node.callsite}"
+-    s"""${node.id} [label="$label"]"""
++    s"""${node.id} [label="${StringEscapeUtils.escapeJava(label)}"]"""
+   }
+ 
+   /** Update the dot representation of the RDDOperationGraph in cluster to subgraph. */
+@@ -188,7 +189,7 @@ private[ui] object RDDOperationGraph extends Logging {
+       cluster: RDDOperationCluster,
+       indent: String): Unit = {
+     subgraph.append(indent).append(s"subgraph cluster${cluster.id} {\n")
+-    subgraph.append(indent).append(s"""  label="${cluster.name}";\n""")
++      .append(indent).append(s"""  label="${StringEscapeUtils.escapeJava(cluster.name)}";\n""")
+     cluster.childNodes.foreach { node =>
+       subgraph.append(indent).append(s"  ${makeDotNode(node)};\n")
+     }
+-- 
+1.7.9.5
+

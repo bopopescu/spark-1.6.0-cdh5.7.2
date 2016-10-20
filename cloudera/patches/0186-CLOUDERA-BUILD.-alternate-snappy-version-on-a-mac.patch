@@ -1,0 +1,37 @@
+From a10b4578b95a085a2e9536b3b776034767ab4e29 Mon Sep 17 00:00:00 2001
+From: Imran Rashid <irashid@cloudera.com>
+Date: Wed, 6 Apr 2016 15:18:46 -0500
+Subject: [PATCH 186/201] CLOUDERA-BUILD. alternate snappy version on a mac.
+
+Since the CDH snappy version doesn't work nicely on a mac, use
+a different version just to let you do local development.
+---
+ pom.xml |   12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/pom.xml b/pom.xml
+index 26f5ce3..9e12a96 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -2621,6 +2621,18 @@
+       </properties>
+     </profile>
+ 
++    <profile>
++      <!--
++           The CDH version of Snappy doesn't play nice on a mac.  We still want our real builds to use
++           the CDH version, but this way you can at least still run unit tests on your mac.
++           We should be sure to get rid of this if the CDH version gets upgraded.
++      -->
++      <id>mac</id>
++      <properties>
++        <snappy.version>1.0.5.4</snappy.version>
++      </properties>
++    </profile>
++
+     <!--
+       These empty profiles are available in some sub-modules. Declare them here so that
+       maven does not complain when they're provided on the command line for a sub-module
+-- 
+1.7.9.5
+

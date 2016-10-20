@@ -1,0 +1,100 @@
+From 74b91e649cc5537856a2ed2ff4a53ac740e0501d Mon Sep 17 00:00:00 2001
+From: Dilip Biswal <dbiswal@us.ibm.com>
+Date: Tue, 12 Jan 2016 21:41:38 -0800
+Subject: [PATCH 073/201] [SPARK-12558][SQL] AnalysisException when multiple
+ functions applied in GROUP BY clause
+
+cloud-fan Can you please take a look ?
+
+In this case, we are failing during check analysis while validating the aggregation expression. I have added a semanticEquals for HiveGenericUDF to fix this. Please let me know if this is the right way to address this issue.
+
+Author: Dilip Biswal <dbiswal@us.ibm.com>
+
+Closes #10520 from dilipbiswal/spark-12558.
+
+(cherry picked from commit dc7b3870fcfc2723319dbb8c53d721211a8116be)
+Signed-off-by: Yin Huai <yhuai@databricks.com>
+
+Conflicts:
+	sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala
+
+(cherry picked from commit dcdc864cf4e40a9d65e6e066c30355addc75c3b2)
+---
+ .../scala/org/apache/spark/sql/hive/HiveShim.scala |   24 ++++++++++++++++++++
+ .../spark/sql/hive/execution/HiveUDFSuite.scala    |    7 ++++++
+ 2 files changed, 31 insertions(+)
+
+diff --git a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala
+index 265df3d..1bb8e3e 100644
+--- a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala
++++ b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala
+@@ -26,10 +26,13 @@ import scala.collection.JavaConverters._
+ import scala.language.implicitConversions
+ import scala.reflect.ClassTag
+ 
++import com.google.common.base.Objects
++
+ import org.apache.hadoop.conf.Configuration
+ import org.apache.hadoop.fs.Path
+ import org.apache.hadoop.hive.ql.exec.{UDF, Utilities}
+ import org.apache.hadoop.hive.ql.plan.{FileSinkDesc, TableDesc}
++import org.apache.hadoop.hive.ql.udf.generic.GenericUDFMacro
+ import org.apache.hadoop.hive.serde2.ColumnProjectionUtils
+ import org.apache.hadoop.hive.serde2.avro.{AvroGenericRecordWritable, AvroSerdeUtils}
+ import org.apache.hadoop.hive.serde2.objectinspector.primitive.HiveDecimalObjectInspector
+@@ -46,6 +49,7 @@ private[hive] object HiveShim {
+   // scale Hive 0.13 infers for BigDecimals from sources that don't specify them (e.g. UDFs)
+   val UNLIMITED_DECIMAL_PRECISION = 38
+   val UNLIMITED_DECIMAL_SCALE = 18
++  val HIVE_GENERIC_UDF_MACRO_CLS = "org.apache.hadoop.hive.ql.udf.generic.GenericUDFMacro"
+ 
+   /*
+    * This function in hive-0.13 become private, but we have to do this to walkaround hive bug
+@@ -124,6 +128,26 @@ private[hive] object HiveShim {
+     // for Serialization
+     def this() = this(null)
+ 
++    override def hashCode(): Int = {
++      if (functionClassName == HIVE_GENERIC_UDF_MACRO_CLS) {
++        Objects.hashCode(functionClassName, instance.asInstanceOf[GenericUDFMacro].getBody())
++      } else {
++        functionClassName.hashCode()
++      }
++    }
++
++    override def equals(other: Any): Boolean = other match {
++      case a: HiveFunctionWrapper if functionClassName == a.functionClassName =>
++        // In case of udf macro, check to make sure they point to the same underlying UDF
++        if (functionClassName == HIVE_GENERIC_UDF_MACRO_CLS) {
++          a.instance.asInstanceOf[GenericUDFMacro].getBody() ==
++            instance.asInstanceOf[GenericUDFMacro].getBody()
++        } else {
++          true
++        }
++      case _ => false
++    }
++
+     @transient
+     def deserializeObjectByKryo[T: ClassTag](
+         kryo: Kryo,
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala
+index 9deb1a6..f8b0f01 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala
+@@ -350,6 +350,13 @@ class HiveUDFSuite extends QueryTest with TestHiveSingleton with SQLTestUtils {
+     sqlContext.dropTempTable("testUDF")
+   }
+ 
++  test("Hive UDF in group by") {
++    Seq(Tuple1(1451400761)).toDF("test_date").registerTempTable("tab1")
++    val count = sql("select date(cast(test_date as timestamp))" +
++      " from tab1 group by date(cast(test_date as timestamp))").count()
++    assert(count == 1)
++  }
++
+   test("SPARK-11522 select input_file_name from non-parquet table"){
+ 
+     withTempDir { tempDir =>
+-- 
+1.7.9.5
+

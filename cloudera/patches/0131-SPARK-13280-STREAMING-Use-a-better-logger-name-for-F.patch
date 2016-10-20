@@ -1,0 +1,63 @@
+From 62a28b3ad8531bdc9d948064a1fa8095dcdb19e0 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Tue, 16 Feb 2016 11:25:43 -0800
+Subject: [PATCH 131/201] [SPARK-13280][STREAMING] Use a better logger name
+ for FileBasedWriteAheadLog.
+
+The new logger name is under the org.apache.spark namespace.
+The detection of the caller name was also enhanced a bit to ignore
+some common things that show up in the call stack.
+
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+
+Closes #11165 from vanzin/SPARK-13280.
+
+(cherry picked from commit c7d00a24da317c9601a9239ac1cf185fb6647352)
+---
+ .../streaming/util/FileBasedWriteAheadLog.scala    |   20 +++++++++++++++-----
+ 1 file changed, 15 insertions(+), 5 deletions(-)
+
+diff --git a/streaming/src/main/scala/org/apache/spark/streaming/util/FileBasedWriteAheadLog.scala b/streaming/src/main/scala/org/apache/spark/streaming/util/FileBasedWriteAheadLog.scala
+index b946e0d..b72a3c5 100644
+--- a/streaming/src/main/scala/org/apache/spark/streaming/util/FileBasedWriteAheadLog.scala
++++ b/streaming/src/main/scala/org/apache/spark/streaming/util/FileBasedWriteAheadLog.scala
+@@ -57,12 +57,18 @@ private[streaming] class FileBasedWriteAheadLog(
+   import FileBasedWriteAheadLog._
+ 
+   private val pastLogs = new ArrayBuffer[LogInfo]
+-  private val callerNameTag = getCallerName.map(c => s" for $c").getOrElse("")
++  private val callerName = getCallerName
+ 
+-  private val threadpoolName = s"WriteAheadLogManager $callerNameTag"
++  private val threadpoolName = {
++    "WriteAheadLogManager" + callerName.map(c => s" for $c").getOrElse("")
++  }
+   private val threadpool = ThreadUtils.newDaemonCachedThreadPool(threadpoolName, 20)
+   private val executionContext = ExecutionContext.fromExecutorService(threadpool)
+-  override protected val logName = s"WriteAheadLogManager $callerNameTag"
++
++  override protected def logName = {
++    getClass.getName.stripSuffix("$") +
++      callerName.map("_" + _).getOrElse("").replaceAll("[ ]", "_")
++  }
+ 
+   private var currentLogPath: Option[String] = None
+   private var currentLogWriter: FileBasedWriteAheadLogWriter = null
+@@ -252,8 +258,12 @@ private[streaming] object FileBasedWriteAheadLog {
+   }
+ 
+   def getCallerName(): Option[String] = {
+-    val stackTraceClasses = Thread.currentThread.getStackTrace().map(_.getClassName)
+-    stackTraceClasses.find(!_.contains("WriteAheadLog")).flatMap(_.split("\\.").lastOption)
++    val blacklist = Seq("WriteAheadLog", "Logging", "java.lang", "scala.")
++    Thread.currentThread.getStackTrace()
++      .map(_.getClassName)
++      .find { c => !blacklist.exists(c.contains) }
++      .flatMap(_.split("\\.").lastOption)
++      .flatMap(_.split("\\$\\$").headOption)
+   }
+ 
+   /** Convert a sequence of files to a sequence of sorted LogInfo objects */
+-- 
+1.7.9.5
+

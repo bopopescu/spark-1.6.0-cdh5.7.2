@@ -1,0 +1,63 @@
+From 5bf0bf3994f86d65c50be6db7966976b0eb44744 Mon Sep 17 00:00:00 2001
+From: Liang-Chi Hsieh <viirya@gmail.com>
+Date: Tue, 26 Jan 2016 11:36:00 +0000
+Subject: [PATCH 106/201] [SPARK-12961][CORE] Prevent snappy-java memory leak
+
+JIRA: https://issues.apache.org/jira/browse/SPARK-12961
+
+To prevent memory leak in snappy-java, just call the method once and cache the result. After the library releases new version, we can remove this object.
+
+JoshRosen
+
+Author: Liang-Chi Hsieh <viirya@gmail.com>
+
+Closes #10875 from viirya/prevent-snappy-memory-leak.
+
+(cherry picked from commit 5936bf9fa85ccf7f0216145356140161c2801682)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit 572bc399952bae322ed6909290996b103688fd3a)
+---
+ .../org/apache/spark/io/CompressionCodec.scala     |   20 ++++++++++++++------
+ 1 file changed, 14 insertions(+), 6 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/io/CompressionCodec.scala b/core/src/main/scala/org/apache/spark/io/CompressionCodec.scala
+index ba449e7..89be4f9 100644
+--- a/core/src/main/scala/org/apache/spark/io/CompressionCodec.scala
++++ b/core/src/main/scala/org/apache/spark/io/CompressionCodec.scala
+@@ -149,12 +149,7 @@ class LZFCompressionCodec(conf: SparkConf) extends CompressionCodec {
+  */
+ @DeveloperApi
+ class SnappyCompressionCodec(conf: SparkConf) extends CompressionCodec {
+-
+-  try {
+-    Snappy.getNativeLibraryVersion
+-  } catch {
+-    case e: Error => throw new IllegalArgumentException(e)
+-  }
++  val version = SnappyCompressionCodec.version
+ 
+   override def compressedOutputStream(s: OutputStream): OutputStream = {
+     val blockSize = conf.getSizeAsBytes("spark.io.compression.snappy.blockSize", "32k").toInt
+@@ -165,6 +160,19 @@ class SnappyCompressionCodec(conf: SparkConf) extends CompressionCodec {
+ }
+ 
+ /**
++ * Object guards against memory leak bug in snappy-java library:
++ * (https://github.com/xerial/snappy-java/issues/131).
++ * Before a new version of the library, we only call the method once and cache the result.
++ */
++private final object SnappyCompressionCodec {
++  private lazy val version: String = try {
++    Snappy.getNativeLibraryVersion
++  } catch {
++    case e: Error => throw new IllegalArgumentException(e)
++  }
++}
++
++/**
+  * Wrapper over [[SnappyOutputStream]] which guards against write-after-close and double-close
+  * issues. See SPARK-7660 for more details. This wrapping can be removed if we upgrade to a version
+  * of snappy-java that contains the fix for https://github.com/xerial/snappy-java/issues/107.
+-- 
+1.7.9.5
+

@@ -1,0 +1,127 @@
+From 5ebc67abd86ed827d48ceb6703d6d82887cef010 Mon Sep 17 00:00:00 2001
+From: Takeshi YAMAMURO <linguin.m.s@gmail.com>
+Date: Mon, 1 Feb 2016 12:13:17 -0800
+Subject: [PATCH 115/201] [SPARK-11780][SQL] Add catalyst type aliases
+ backwards compatibility
+
+Changed a target at branch-1.6 from #10635.
+
+Author: Takeshi YAMAMURO <linguin.m.s@gmail.com>
+
+Closes #10915 from maropu/pr9935-v3.
+
+(cherry picked from commit 70fcbf68e412f6549ba6c2db86f7ef4518d05fe1)
+---
+ .../sql/catalyst/CatalystTypeConverters.scala      |    2 +-
+ .../org/apache/spark/sql/types/ArrayType.scala     |    7 +++----
+ .../org/apache/spark/sql/types/StructType.scala    |    1 -
+ .../scala/org/apache/spark/sql/types/package.scala |   22 +++++++++++++++++++-
+ .../execution/datasources/json/JacksonParser.scala |    2 +-
+ .../org/apache/spark/sql/hive/HiveInspectors.scala |    2 +-
+ 6 files changed, 27 insertions(+), 9 deletions(-)
+
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/CatalystTypeConverters.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/CatalystTypeConverters.scala
+index 2ec0ff5..0af8ed9 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/CatalystTypeConverters.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/CatalystTypeConverters.scala
+@@ -28,7 +28,7 @@ import scala.language.existentials
+ import org.apache.spark.sql.Row
+ import org.apache.spark.sql.catalyst.expressions._
+ import org.apache.spark.sql.catalyst.util._
+-import org.apache.spark.sql.types._
++import org.apache.spark.sql.types.{ArrayBasedMapData => _, _}
+ import org.apache.spark.unsafe.types.UTF8String
+ 
+ /**
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/types/ArrayType.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/types/ArrayType.scala
+index a001ead..bcedead 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/types/ArrayType.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/types/ArrayType.scala
+@@ -17,13 +17,12 @@
+ 
+ package org.apache.spark.sql.types
+ 
+-import org.apache.spark.sql.catalyst.util.ArrayData
++import scala.math.Ordering
++
+ import org.json4s.JsonDSL._
+ 
+ import org.apache.spark.annotation.DeveloperApi
+-
+-import scala.math.Ordering
+-
++import org.apache.spark.sql.catalyst.util.{ArrayData => _}
+ 
+ object ArrayType extends AbstractDataType {
+   /** Construct a [[ArrayType]] object with the given element type. The `containsNull` is true. */
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/types/StructType.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/types/StructType.scala
+index 9778df2..494bb86 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/types/StructType.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/types/StructType.scala
+@@ -24,7 +24,6 @@ import org.json4s.JsonDSL._
+ import org.apache.spark.SparkException
+ import org.apache.spark.annotation.DeveloperApi
+ import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference, InterpretedOrdering}
+-import org.apache.spark.sql.catalyst.util.DataTypeParser
+ 
+ 
+ /**
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/types/package.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/types/package.scala
+index 346a51e..779b8cd 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/types/package.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/types/package.scala
+@@ -21,4 +21,24 @@ package org.apache.spark.sql
+  * Contains a type system for attributes produced by relations, including complex types like
+  * structs, arrays and maps.
+  */
+-package object types
++package object types {
++
++  /* Aliases for backwards compatibility. See SPARK-11780. */
++  @deprecated("Moved to org.apache.spark.sql.catalyst.util.ArrayBasedMapData", since = "1.6.0")
++  type ArrayBasedMapData = org.apache.spark.sql.catalyst.util.ArrayBasedMapData
++  @deprecated("Moved to org.apache.spark.sql.catalyst.util.ArrayBasedMapData", since = "1.6.0")
++  val ArrayBasedMapData = org.apache.spark.sql.catalyst.util.ArrayBasedMapData
++  @deprecated("Moved to org.apache.spark.sql.catalyst.util.ArrayData", since = "1.6.0")
++  type ArrayData = org.apache.spark.sql.catalyst.util.ArrayData
++  @deprecated("Moved to org.apache.spark.sql.catalyst.util.DataTypeException", since = "1.6.0")
++  type DataTypeException = org.apache.spark.sql.catalyst.util.DataTypeException
++  @deprecated("Moved to org.apache.spark.sql.catalyst.util.DataTypeParser", since = "1.6.0")
++  type DataTypeParser = org.apache.spark.sql.catalyst.util.DataTypeParser
++  @deprecated("Moved to org.apache.spark.sql.catalyst.util.DataTypeParser", since = "1.6.0")
++  val DataTypeParser = org.apache.spark.sql.catalyst.util.DataTypeParser
++  @deprecated("Moved to org.apache.spark.sql.catalyst.util.GenericArrayData", since = "1.6.0")
++  type GenericArrayData = org.apache.spark.sql.catalyst.util.GenericArrayData
++  @deprecated("Moved to org.apache.spark.sql.catalyst.util.MapData", since = "1.6.0")
++  type MapData = org.apache.spark.sql.catalyst.util.MapData
++
++}
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/json/JacksonParser.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/json/JacksonParser.scala
+index 55a1c24..d58d347 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/json/JacksonParser.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/json/JacksonParser.scala
+@@ -27,7 +27,7 @@ import org.apache.spark.sql.catalyst.InternalRow
+ import org.apache.spark.sql.catalyst.expressions._
+ import org.apache.spark.sql.catalyst.util._
+ import org.apache.spark.sql.execution.datasources.json.JacksonUtils.nextUntil
+-import org.apache.spark.sql.types._
++import org.apache.spark.sql.types.{ArrayBasedMapData => _, _}
+ import org.apache.spark.unsafe.types.UTF8String
+ import org.apache.spark.util.Utils
+ 
+diff --git a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveInspectors.scala b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveInspectors.scala
+index 95b57d6..42f4296 100644
+--- a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveInspectors.scala
++++ b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveInspectors.scala
+@@ -29,7 +29,7 @@ import org.apache.hadoop.{io => hadoopIo}
+ import org.apache.spark.sql.catalyst.InternalRow
+ import org.apache.spark.sql.catalyst.expressions._
+ import org.apache.spark.sql.catalyst.util._
+-import org.apache.spark.sql.types._
++import org.apache.spark.sql.types.{ArrayBasedMapData => _, _}
+ import org.apache.spark.sql.{AnalysisException, types}
+ import org.apache.spark.unsafe.types.UTF8String
+ 
+-- 
+1.7.9.5
+

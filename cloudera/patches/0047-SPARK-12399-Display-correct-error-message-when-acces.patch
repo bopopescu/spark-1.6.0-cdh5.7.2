@@ -1,0 +1,76 @@
+From 378e29115628b6ff74d0da3602712e374245c671 Mon Sep 17 00:00:00 2001
+From: Carson Wang <carson.wang@intel.com>
+Date: Wed, 30 Dec 2015 13:49:10 -0800
+Subject: [PATCH 047/201] [SPARK-12399] Display correct error message when
+ accessing REST API with an unknown app Id
+
+I got an exception when accessing the below REST API with an unknown application Id.
+`http://<server-url>:18080/api/v1/applications/xxx/jobs`
+Instead of an exception, I expect an error message "no such app: xxx" which is a similar error message when I access `/api/v1/applications/xxx`
+```
+org.spark-project.guava.util.concurrent.UncheckedExecutionException: java.util.NoSuchElementException: no app with key xxx
+	at org.spark-project.guava.cache.LocalCache$Segment.get(LocalCache.java:2263)
+	at org.spark-project.guava.cache.LocalCache.get(LocalCache.java:4000)
+	at org.spark-project.guava.cache.LocalCache.getOrLoad(LocalCache.java:4004)
+	at org.spark-project.guava.cache.LocalCache$LocalLoadingCache.get(LocalCache.java:4874)
+	at org.apache.spark.deploy.history.HistoryServer.getSparkUI(HistoryServer.scala:116)
+	at org.apache.spark.status.api.v1.UIRoot$class.withSparkUI(ApiRootResource.scala:226)
+	at org.apache.spark.deploy.history.HistoryServer.withSparkUI(HistoryServer.scala:46)
+	at org.apache.spark.status.api.v1.ApiRootResource.getJobs(ApiRootResource.scala:66)
+```
+
+Author: Carson Wang <carson.wang@intel.com>
+
+Closes #10352 from carsonwang/unknownAppFix.
+
+(cherry picked from commit b244297966be1d09f8e861cfe2d8e69f7bed84da)
+Signed-off-by: Marcelo Vanzin <vanzin@cloudera.com>
+(cherry picked from commit cd86075b52d6363f674dffc3eb71d90449563879)
+---
+ .../spark/deploy/history/HistoryServer.scala       |   16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/deploy/history/HistoryServer.scala b/core/src/main/scala/org/apache/spark/deploy/history/HistoryServer.scala
+index 933ea2e..d3bddd7 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/history/HistoryServer.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/history/HistoryServer.scala
+@@ -21,6 +21,8 @@ import java.util.NoSuchElementException
+ import java.util.zip.ZipOutputStream
+ import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
+ 
++import scala.util.control.NonFatal
++
+ import com.google.common.cache._
+ import org.eclipse.jetty.servlet.{ServletContextHandler, ServletHolder}
+ 
+@@ -116,7 +118,17 @@ class HistoryServer(
+   }
+ 
+   def getSparkUI(appKey: String): Option[SparkUI] = {
+-    Option(appCache.get(appKey))
++    try {
++      val ui = appCache.get(appKey)
++      Some(ui)
++    } catch {
++      case NonFatal(e) => e.getCause() match {
++        case nsee: NoSuchElementException =>
++          None
++
++        case cause: Exception => throw cause
++      }
++    }
+   }
+ 
+   initialize()
+@@ -196,7 +208,7 @@ class HistoryServer(
+       appCache.get(appId + attemptId.map { id => s"/$id" }.getOrElse(""))
+       true
+     } catch {
+-      case e: Exception => e.getCause() match {
++      case NonFatal(e) => e.getCause() match {
+         case nsee: NoSuchElementException =>
+           false
+ 
+-- 
+1.7.9.5
+

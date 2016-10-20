@@ -1,0 +1,97 @@
+From 42a401412517cadb288092cd88bed09a2f420231 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Mon, 13 Jul 2015 10:45:38 -0700
+Subject: [PATCH 010/201] CLOUDERA-BUILD. CDH-26527. Package flume backend in
+ Spark assembly.
+
+This makes it easier for applications that use the flume backend to
+be deployed in CDH, since they don't need to worry about how to
+distribute / package that dependency.
+
+(cherry picked from commit bfcd035dc3cc59ad83ad7cc8f60553a6b468b314)
+---
+ assembly/pom.xml                  |   16 ++++++++++++++++
+ examples/pom.xml                  |    1 +
+ pom.xml                           |    2 ++
+ python/pyspark/streaming/flume.py |    6 ++++--
+ 4 files changed, 23 insertions(+), 2 deletions(-)
+
+diff --git a/assembly/pom.xml b/assembly/pom.xml
+index 748776d..1e7b086 100644
+--- a/assembly/pom.xml
++++ b/assembly/pom.xml
+@@ -61,6 +61,11 @@
+     </dependency>
+     <dependency>
+       <groupId>org.apache.spark</groupId>
++      <artifactId>spark-streaming-flume_${scala.binary.version}</artifactId>
++      <version>${project.version}</version>
++    </dependency>
++    <dependency>
++      <groupId>org.apache.spark</groupId>
+       <artifactId>spark-graphx_${scala.binary.version}</artifactId>
+       <version>${project.version}</version>
+     </dependency>
+@@ -298,5 +303,16 @@
+         <parquet.deps.scope>provided</parquet.deps.scope>
+       </properties>
+     </profile>
++    <profile>
++      <id>flume-provided</id>
++      <activation>
++        <property>
++          <name>cdh.build</name>
++        </property>
++      </activation>
++      <properties>
++        <flume.deps.scope>provided</flume.deps.scope>
++      </properties>
++    </profile>
+   </profiles>
+ </project>
+diff --git a/examples/pom.xml b/examples/pom.xml
+index e8b10c0..ad6abb1 100644
+--- a/examples/pom.xml
++++ b/examples/pom.xml
+@@ -80,6 +80,7 @@
+       <groupId>org.apache.spark</groupId>
+       <artifactId>spark-streaming-flume_${scala.binary.version}</artifactId>
+       <version>${project.version}</version>
++      <scope>provided</scope>
+     </dependency>
+     <dependency>
+       <groupId>org.apache.spark</groupId>
+diff --git a/pom.xml b/pom.xml
+index a11f1ec..1dc5f26 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -104,7 +104,9 @@
+     <module>external/twitter</module>
+     <module>external/flume</module>
+     <module>external/flume-sink</module>
++    <!-- Disabled in CDH.
+     <module>external/flume-assembly</module>
++    -->
+     <module>external/mqtt</module>
+     <module>external/mqtt-assembly</module>
+     <module>external/zeromq</module>
+diff --git a/python/pyspark/streaming/flume.py b/python/pyspark/streaming/flume.py
+index b3d1905..14a079e 100644
+--- a/python/pyspark/streaming/flume.py
++++ b/python/pyspark/streaming/flume.py
+@@ -62,8 +62,10 @@ class FlumeUtils(object):
+             helper = helperClass.newInstance()
+             jstream = helper.createStream(ssc._jssc, hostname, port, jlevel, enableDecompression)
+         except Py4JJavaError as e:
+-            if 'ClassNotFoundException' in str(e.java_exception):
+-                FlumeUtils._printErrorMsg(ssc.sparkContext)
++            # spark-streaming-flume is in CDH's assembly so this should never happen. Just
++            # let the exception bubble up.
++            #if 'ClassNotFoundException' in str(e.java_exception):
++            #    FlumeUtils._printErrorMsg(ssc.sparkContext)
+             raise e
+ 
+         return FlumeUtils._toPythonDStream(ssc, jstream, bodyDecoder)
+-- 
+1.7.9.5
+

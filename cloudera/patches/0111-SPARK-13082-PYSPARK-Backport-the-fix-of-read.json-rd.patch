@@ -1,0 +1,75 @@
+From c110729eb7ed15c5e63664d6b6b92c6d8aaa3f50 Mon Sep 17 00:00:00 2001
+From: Shixiong Zhu <shixiong@databricks.com>
+Date: Fri, 29 Jan 2016 13:53:11 -0800
+Subject: [PATCH 111/201] [SPARK-13082][PYSPARK] Backport the fix of
+ 'read.json(rdd)' in #10559 to branch-1.6
+
+SPARK-13082 actually fixed by  #10559. However, it's a big PR and not backported to 1.6. This PR just backported the fix of 'read.json(rdd)' to branch-1.6.
+
+Author: Shixiong Zhu <shixiong@databricks.com>
+
+Closes #10988 from zsxwing/json-rdd.
+
+(cherry picked from commit 84dab7260e9a33586ad4002cd826a5ae7c8c4141)
+---
+ python/pyspark/sql/readwriter.py |   12 +++++++++++-
+ python/pyspark/sql/tests.py      |    6 +++---
+ 2 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/python/pyspark/sql/readwriter.py b/python/pyspark/sql/readwriter.py
+index a3d7eca..97da3d9 100644
+--- a/python/pyspark/sql/readwriter.py
++++ b/python/pyspark/sql/readwriter.py
+@@ -177,7 +177,17 @@ class DataFrameReader(object):
+         elif type(path) == list:
+             return self._df(self._jreader.json(self._sqlContext._sc._jvm.PythonUtils.toSeq(path)))
+         elif isinstance(path, RDD):
+-            return self._df(self._jreader.json(path._jrdd))
++            def func(iterator):
++                for x in iterator:
++                    if not isinstance(x, basestring):
++                        x = unicode(x)
++                    if isinstance(x, unicode):
++                        x = x.encode("utf-8")
++                    yield x
++            keyed = path.mapPartitions(func)
++            keyed._bypass_serializer = True
++            jrdd = keyed._jrdd.map(self._sqlContext._jvm.BytesToString())
++            return self._df(self._jreader.json(jrdd))
+         else:
+             raise TypeError("path can be only string or RDD")
+ 
+diff --git a/python/pyspark/sql/tests.py b/python/pyspark/sql/tests.py
+index ee64f8e..2c340ad 100644
+--- a/python/pyspark/sql/tests.py
++++ b/python/pyspark/sql/tests.py
+@@ -326,7 +326,7 @@ class SQLTests(ReusedPySparkTestCase):
+ 
+     def test_basic_functions(self):
+         rdd = self.sc.parallelize(['{"foo":"bar"}', '{"foo":"baz"}'])
+-        df = self.sqlCtx.jsonRDD(rdd)
++        df = self.sqlCtx.read.json(rdd)
+         df.count()
+         df.collect()
+         df.schema
+@@ -345,7 +345,7 @@ class SQLTests(ReusedPySparkTestCase):
+         df.collect()
+ 
+     def test_apply_schema_to_row(self):
+-        df = self.sqlCtx.jsonRDD(self.sc.parallelize(["""{"a":2}"""]))
++        df = self.sqlCtx.read.json(self.sc.parallelize(["""{"a":2}"""]))
+         df2 = self.sqlCtx.createDataFrame(df.map(lambda x: x), df.schema)
+         self.assertEqual(df.collect(), df2.collect())
+ 
+@@ -821,7 +821,7 @@ class SQLTests(ReusedPySparkTestCase):
+     def test_help_command(self):
+         # Regression test for SPARK-5464
+         rdd = self.sc.parallelize(['{"foo":"bar"}', '{"foo":"baz"}'])
+-        df = self.sqlCtx.jsonRDD(rdd)
++        df = self.sqlCtx.read.json(rdd)
+         # render_doc() reproduces the help() exception without printing output
+         pydoc.render_doc(df)
+         pydoc.render_doc(df.foo)
+-- 
+1.7.9.5
+

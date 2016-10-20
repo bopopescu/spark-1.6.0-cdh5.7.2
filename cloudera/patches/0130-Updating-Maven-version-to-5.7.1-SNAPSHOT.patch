@@ -1,0 +1,506 @@
+From 91f3223408b3b562da46179f5ed0bcd8886c7d37 Mon Sep 17 00:00:00 2001
+From: Jenkins <dev-kitchen@cloudera.com>
+Date: Fri, 12 Feb 2016 18:26:46 -0800
+Subject: [PATCH 130/201] Updating Maven version to 5.7.1-SNAPSHOT
+
+---
+ assembly/pom.xml                    |    2 +-
+ bagel/pom.xml                       |    2 +-
+ core/pom.xml                        |    2 +-
+ docker-integration-tests/pom.xml    |    2 +-
+ examples/pom.xml                    |    2 +-
+ external/flume-assembly/pom.xml     |    2 +-
+ external/flume-sink/pom.xml         |    2 +-
+ external/flume/pom.xml              |    2 +-
+ external/kafka-assembly/pom.xml     |    2 +-
+ external/kafka/pom.xml              |    2 +-
+ external/mqtt-assembly/pom.xml      |    2 +-
+ external/mqtt/pom.xml               |    2 +-
+ external/twitter/pom.xml            |    2 +-
+ external/zeromq/pom.xml             |    2 +-
+ extras/java8-tests/pom.xml          |    2 +-
+ extras/kinesis-asl-assembly/pom.xml |    2 +-
+ extras/kinesis-asl/pom.xml          |    2 +-
+ extras/spark-ganglia-lgpl/pom.xml   |    2 +-
+ graphx/pom.xml                      |    2 +-
+ launcher/pom.xml                    |    2 +-
+ mllib/pom.xml                       |    2 +-
+ network/common/pom.xml              |    2 +-
+ network/shuffle/pom.xml             |    2 +-
+ network/yarn/pom.xml                |    2 +-
+ pom.xml                             |    4 ++--
+ repl/pom.xml                        |    2 +-
+ sql/catalyst/pom.xml                |    2 +-
+ sql/core/pom.xml                    |    2 +-
+ sql/hive-thriftserver/pom.xml       |    2 +-
+ sql/hive/pom.xml                    |    2 +-
+ streaming/pom.xml                   |    2 +-
+ tags/pom.xml                        |    2 +-
+ tools/pom.xml                       |    2 +-
+ unsafe/pom.xml                      |    2 +-
+ yarn/pom.xml                        |    2 +-
+ 35 files changed, 36 insertions(+), 36 deletions(-)
+
+diff --git a/assembly/pom.xml b/assembly/pom.xml
+index 114fe9e..3546a2a 100644
+--- a/assembly/pom.xml
++++ b/assembly/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/bagel/pom.xml b/bagel/pom.xml
+index 511d853..bc37419 100644
+--- a/bagel/pom.xml
++++ b/bagel/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/core/pom.xml b/core/pom.xml
+index 2b05d28..8c872f1 100644
+--- a/core/pom.xml
++++ b/core/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/docker-integration-tests/pom.xml b/docker-integration-tests/pom.xml
+index e6c4281..cff6217 100644
+--- a/docker-integration-tests/pom.xml
++++ b/docker-integration-tests/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/examples/pom.xml b/examples/pom.xml
+index 32deb5c..6ff2c9e 100644
+--- a/examples/pom.xml
++++ b/examples/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/external/flume-assembly/pom.xml b/external/flume-assembly/pom.xml
+index 837c925..49ffe73 100644
+--- a/external/flume-assembly/pom.xml
++++ b/external/flume-assembly/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/external/flume-sink/pom.xml b/external/flume-sink/pom.xml
+index 3f15125..944fc52 100644
+--- a/external/flume-sink/pom.xml
++++ b/external/flume-sink/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/external/flume/pom.xml b/external/flume/pom.xml
+index 0451ab8..6a6418d 100644
+--- a/external/flume/pom.xml
++++ b/external/flume/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/external/kafka-assembly/pom.xml b/external/kafka-assembly/pom.xml
+index 348a269..354b22c 100644
+--- a/external/kafka-assembly/pom.xml
++++ b/external/kafka-assembly/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/external/kafka/pom.xml b/external/kafka/pom.xml
+index d674485..838110c 100644
+--- a/external/kafka/pom.xml
++++ b/external/kafka/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/external/mqtt-assembly/pom.xml b/external/mqtt-assembly/pom.xml
+index 5309ef1..f1f4ac6 100644
+--- a/external/mqtt-assembly/pom.xml
++++ b/external/mqtt-assembly/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/external/mqtt/pom.xml b/external/mqtt/pom.xml
+index 2859173..031e7e6 100644
+--- a/external/mqtt/pom.xml
++++ b/external/mqtt/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/external/twitter/pom.xml b/external/twitter/pom.xml
+index 3c5cfee..4c554cc 100644
+--- a/external/twitter/pom.xml
++++ b/external/twitter/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/external/zeromq/pom.xml b/external/zeromq/pom.xml
+index dbc81e3..761a5c7 100644
+--- a/external/zeromq/pom.xml
++++ b/external/zeromq/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/extras/java8-tests/pom.xml b/extras/java8-tests/pom.xml
+index ce51e23..af0f7bb 100644
+--- a/extras/java8-tests/pom.xml
++++ b/extras/java8-tests/pom.xml
+@@ -20,7 +20,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/extras/kinesis-asl-assembly/pom.xml b/extras/kinesis-asl-assembly/pom.xml
+index e3bce04..534dc69 100644
+--- a/extras/kinesis-asl-assembly/pom.xml
++++ b/extras/kinesis-asl-assembly/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/extras/kinesis-asl/pom.xml b/extras/kinesis-asl/pom.xml
+index 8b72edb..dffb9d5 100644
+--- a/extras/kinesis-asl/pom.xml
++++ b/extras/kinesis-asl/pom.xml
+@@ -20,7 +20,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/extras/spark-ganglia-lgpl/pom.xml b/extras/spark-ganglia-lgpl/pom.xml
+index 976fc7f..fc7bf67 100644
+--- a/extras/spark-ganglia-lgpl/pom.xml
++++ b/extras/spark-ganglia-lgpl/pom.xml
+@@ -20,7 +20,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/graphx/pom.xml b/graphx/pom.xml
+index dc2f46b..3e510be 100644
+--- a/graphx/pom.xml
++++ b/graphx/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/launcher/pom.xml b/launcher/pom.xml
+index 3c184e6..cc86ef9 100644
+--- a/launcher/pom.xml
++++ b/launcher/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/mllib/pom.xml b/mllib/pom.xml
+index 3a67c56..1741c0a 100644
+--- a/mllib/pom.xml
++++ b/mllib/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/network/common/pom.xml b/network/common/pom.xml
+index b72f0fb..d1ee957 100644
+--- a/network/common/pom.xml
++++ b/network/common/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/network/shuffle/pom.xml b/network/shuffle/pom.xml
+index 80fead4..f1d47cf 100644
+--- a/network/shuffle/pom.xml
++++ b/network/shuffle/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/network/yarn/pom.xml b/network/yarn/pom.xml
+index 9b4c100..aa0b16a 100644
+--- a/network/yarn/pom.xml
++++ b/network/yarn/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/pom.xml b/pom.xml
+index 446abee..26f5ce3 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -22,11 +22,11 @@
+   <parent>
+     <groupId>com.cloudera.cdh</groupId>
+     <artifactId>cdh-root</artifactId>
+-    <version>5.7.0-SNAPSHOT</version>
++    <version>5.7.1-SNAPSHOT</version>
+   </parent>
+   <groupId>org.apache.spark</groupId>
+   <artifactId>spark-parent_2.10</artifactId>
+-  <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++  <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+   <packaging>pom</packaging>
+   <name>Spark Project Parent POM</name>
+   <url>http://spark.apache.org/</url>
+diff --git a/repl/pom.xml b/repl/pom.xml
+index 9226ccd..17d4641 100644
+--- a/repl/pom.xml
++++ b/repl/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/sql/catalyst/pom.xml b/sql/catalyst/pom.xml
+index 02cf4fc..ddab41c 100644
+--- a/sql/catalyst/pom.xml
++++ b/sql/catalyst/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/sql/core/pom.xml b/sql/core/pom.xml
+index 991884b..9525119 100644
+--- a/sql/core/pom.xml
++++ b/sql/core/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/sql/hive-thriftserver/pom.xml b/sql/hive-thriftserver/pom.xml
+index 59392ce..6b5b884 100644
+--- a/sql/hive-thriftserver/pom.xml
++++ b/sql/hive-thriftserver/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/sql/hive/pom.xml b/sql/hive/pom.xml
+index 9dfda29..4d1f924 100644
+--- a/sql/hive/pom.xml
++++ b/sql/hive/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/streaming/pom.xml b/streaming/pom.xml
+index 28913e5..b55afa5 100644
+--- a/streaming/pom.xml
++++ b/streaming/pom.xml
+@@ -21,7 +21,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/tags/pom.xml b/tags/pom.xml
+index 66dcd3d..98100ca 100644
+--- a/tags/pom.xml
++++ b/tags/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/tools/pom.xml b/tools/pom.xml
+index 65ca022..382785d 100644
+--- a/tools/pom.xml
++++ b/tools/pom.xml
+@@ -20,7 +20,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/unsafe/pom.xml b/unsafe/pom.xml
+index 97d1171..e470c4d 100644
+--- a/unsafe/pom.xml
++++ b/unsafe/pom.xml
+@@ -22,7 +22,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+diff --git a/yarn/pom.xml b/yarn/pom.xml
+index 233fca1..ce8cf33 100644
+--- a/yarn/pom.xml
++++ b/yarn/pom.xml
+@@ -20,7 +20,7 @@
+   <parent>
+     <groupId>org.apache.spark</groupId>
+     <artifactId>spark-parent_2.10</artifactId>
+-    <version>1.6.0-cdh5.7.0-SNAPSHOT</version>
++    <version>1.6.0-cdh5.7.1-SNAPSHOT</version>
+     <relativePath>../pom.xml</relativePath>
+   </parent>
+ 
+-- 
+1.7.9.5
+

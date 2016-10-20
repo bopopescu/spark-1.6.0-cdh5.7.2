@@ -1,0 +1,637 @@
+From f10f45f6fc50f664f126155cd322f1b1abbae839 Mon Sep 17 00:00:00 2001
+From: Mark Grover <mgrover@cloudera.com>
+Date: Fri, 20 Nov 2015 09:51:26 -0800
+Subject: [PATCH 021/201] CLOUDERA-BUILD. Revert "[SPARK-7743] [SQL] Parquet
+ 1.7"
+
+(cherry picked from commit 69e6895092649b96cf322ef66dc42cd0ec1cd42c)
+---
+ .../org/apache/spark/ui/UISeleniumSuite.scala      |    1 +
+ docs/sql-programming-guide.md                      |    4 +-
+ examples/src/main/python/parquet_inputformat.py    |    2 +-
+ pom.xml                                            |    6 +--
+ sql/core/pom.xml                                   |    6 +--
+ .../parquet/SpecificParquetRecordReaderBase.java   |   42 ++++++++++----------
+ .../parquet/UnsafeRowParquetRecordReader.java      |   36 ++++++++---------
+ .../main/scala/org/apache/spark/sql/SQLConf.scala  |    4 +-
+ .../execution/datasources/SqlNewHadoopRDD.scala    |    2 +-
+ .../datasources/parquet/CatalystReadSupport.scala  |   10 ++---
+ .../parquet/CatalystRecordMaterializer.scala       |    4 +-
+ .../datasources/parquet/CatalystRowConverter.scala |   10 ++---
+ .../parquet/CatalystSchemaConverter.scala          |    8 ++--
+ .../datasources/parquet/CatalystWriteSupport.scala |   10 ++---
+ .../parquet/DirectParquetOutputCommitter.scala     |    6 +--
+ .../datasources/parquet/ParquetFilters.scala       |   10 ++---
+ .../datasources/parquet/ParquetRelation.scala      |   12 +++---
+ sql/core/src/test/resources/log4j.properties       |   10 ++---
+ .../parquet/ParquetAvroCompatibilitySuite.scala    |    2 +-
+ .../parquet/ParquetCompatibilityTest.scala         |   10 ++---
+ .../datasources/parquet/ParquetFilterSuite.scala   |    4 +-
+ .../datasources/parquet/ParquetIOSuite.scala       |   19 +++++----
+ .../datasources/parquet/ParquetSchemaSuite.scala   |    2 +-
+ .../datasources/parquet/ParquetTest.scala          |    9 ++---
+ sql/hive/src/test/resources/log4j.properties       |    8 ++--
+ .../spark/sql/sources/hadoopFsRelationSuites.scala |    2 +-
+ .../apache/spark/streaming/UISeleniumSuite.scala   |    1 +
+ 27 files changed, 120 insertions(+), 120 deletions(-)
+
+diff --git a/core/src/test/scala/org/apache/spark/ui/UISeleniumSuite.scala b/core/src/test/scala/org/apache/spark/ui/UISeleniumSuite.scala
+index ceecfd6..d6d7e04 100644
+--- a/core/src/test/scala/org/apache/spark/ui/UISeleniumSuite.scala
++++ b/core/src/test/scala/org/apache/spark/ui/UISeleniumSuite.scala
+@@ -69,6 +69,7 @@ private[spark] class SparkUICssErrorHandler extends DefaultCssErrorHandler {
+ /**
+  * Selenium tests for the Spark Web UI.
+  */
++@Ignore
+ class UISeleniumSuite extends SparkFunSuite with WebBrowser with Matchers with BeforeAndAfterAll {
+ 
+   implicit var webDriver: WebDriver = _
+diff --git a/docs/sql-programming-guide.md b/docs/sql-programming-guide.md
+index 3f9a831..ad1a4aa 100644
+--- a/docs/sql-programming-guide.md
++++ b/docs/sql-programming-guide.md
+@@ -1475,12 +1475,12 @@ Configuration of Parquet can be done using the `setConf` method on `SQLContext`
+ </tr>
+ <tr>
+   <td><code>spark.sql.parquet.output.committer.class</code></td>
+-  <td><code>org.apache.parquet.hadoop.<br />ParquetOutputCommitter</code></td>
++  <td><code>parquet.hadoop.<br />ParquetOutputCommitter</code></td>
+   <td>
+     <p>
+       The output committer class used by Parquet. The specified class needs to be a subclass of
+       <code>org.apache.hadoop.<br />mapreduce.OutputCommitter</code>. Typically, it's also a
+-      subclass of <code>org.apache.parquet.hadoop.ParquetOutputCommitter</code>.
++      subclass of <code>parquet.hadoop.ParquetOutputCommitter</code>.
+     </p>
+     <p>
+       <b>Note:</b>
+diff --git a/examples/src/main/python/parquet_inputformat.py b/examples/src/main/python/parquet_inputformat.py
+index e1fd85b..96ddac7 100644
+--- a/examples/src/main/python/parquet_inputformat.py
++++ b/examples/src/main/python/parquet_inputformat.py
+@@ -51,7 +51,7 @@ if __name__ == "__main__":
+ 
+     parquet_rdd = sc.newAPIHadoopFile(
+         path,
+-        'org.apache.parquet.avro.AvroParquetInputFormat',
++        'parquet.avro.AvroParquetInputFormat',
+         'java.lang.Void',
+         'org.apache.avro.generic.IndexedRecord',
+         valueConverter='org.apache.spark.examples.pythonconverters.IndexedRecordToJavaConverter')
+diff --git a/pom.xml b/pom.xml
+index 71cbcb8..08c6d7c 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1708,19 +1708,19 @@
+         </exclusions>
+       </dependency>
+       <dependency>
+-        <groupId>org.apache.parquet</groupId>
++        <groupId>com.twitter</groupId>
+         <artifactId>parquet-column</artifactId>
+         <version>${parquet.version}</version>
+         <scope>${parquet.deps.scope}</scope>
+       </dependency>
+       <dependency>
+-        <groupId>org.apache.parquet</groupId>
++        <groupId>com.twitter</groupId>
+         <artifactId>parquet-hadoop</artifactId>
+         <version>${parquet.version}</version>
+         <scope>${parquet.deps.scope}</scope>
+       </dependency>
+       <dependency>
+-        <groupId>org.apache.parquet</groupId>
++        <groupId>com.twitter</groupId>
+         <artifactId>parquet-avro</artifactId>
+         <version>${parquet.version}</version>
+         <scope>${parquet.test.deps.scope}</scope>
+diff --git a/sql/core/pom.xml b/sql/core/pom.xml
+index 84ac87b..c7369ed 100644
+--- a/sql/core/pom.xml
++++ b/sql/core/pom.xml
+@@ -65,11 +65,11 @@
+       <artifactId>spark-test-tags_${scala.binary.version}</artifactId>
+     </dependency>
+     <dependency>
+-      <groupId>org.apache.parquet</groupId>
++      <groupId>com.twitter</groupId>
+       <artifactId>parquet-column</artifactId>
+     </dependency>
+     <dependency>
+-      <groupId>org.apache.parquet</groupId>
++      <groupId>com.twitter</groupId>
+       <artifactId>parquet-hadoop</artifactId>
+     </dependency>
+     <dependency>
+@@ -99,7 +99,7 @@
+       <scope>test</scope>
+     </dependency>
+     <dependency>
+-      <groupId>org.apache.parquet</groupId>
++      <groupId>com.twitter</groupId>
+       <artifactId>parquet-avro</artifactId>
+       <scope>test</scope>
+     </dependency>
+diff --git a/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java b/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java
+index 2ed30c1..48b2498 100644
+--- a/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java
++++ b/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java
+@@ -29,33 +29,33 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ 
+-import static org.apache.parquet.filter2.compat.RowGroupFilter.filterRowGroups;
+-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+-import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
+-import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
+-import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
++import static parquet.filter2.compat.RowGroupFilter.filterRowGroups;
++import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
++import static parquet.format.converter.ParquetMetadataConverter.range;
++import static parquet.hadoop.ParquetFileReader.readFooter;
++import static parquet.hadoop.ParquetInputFormat.getFilter;
+ 
+ import org.apache.hadoop.conf.Configuration;
+ import org.apache.hadoop.fs.Path;
+ import org.apache.hadoop.mapreduce.InputSplit;
+ import org.apache.hadoop.mapreduce.RecordReader;
+ import org.apache.hadoop.mapreduce.TaskAttemptContext;
+-import org.apache.parquet.bytes.BytesInput;
+-import org.apache.parquet.bytes.BytesUtils;
+-import org.apache.parquet.column.ColumnDescriptor;
+-import org.apache.parquet.column.values.ValuesReader;
+-import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
+-import org.apache.parquet.filter2.compat.FilterCompat;
+-import org.apache.parquet.hadoop.BadConfigurationException;
+-import org.apache.parquet.hadoop.ParquetFileReader;
+-import org.apache.parquet.hadoop.ParquetInputFormat;
+-import org.apache.parquet.hadoop.ParquetInputSplit;
+-import org.apache.parquet.hadoop.api.InitContext;
+-import org.apache.parquet.hadoop.api.ReadSupport;
+-import org.apache.parquet.hadoop.metadata.BlockMetaData;
+-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+-import org.apache.parquet.hadoop.util.ConfigurationUtil;
+-import org.apache.parquet.schema.MessageType;
++import parquet.bytes.BytesInput;
++import parquet.bytes.BytesUtils;
++import parquet.column.ColumnDescriptor;
++import parquet.column.values.ValuesReader;
++import parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
++import parquet.filter2.compat.FilterCompat;
++import parquet.hadoop.BadConfigurationException;
++import parquet.hadoop.ParquetFileReader;
++import parquet.hadoop.ParquetInputFormat;
++import parquet.hadoop.ParquetInputSplit;
++import parquet.hadoop.api.InitContext;
++import parquet.hadoop.api.ReadSupport;
++import parquet.hadoop.metadata.BlockMetaData;
++import parquet.hadoop.metadata.ParquetMetadata;
++import parquet.hadoop.util.ConfigurationUtil;
++import parquet.schema.MessageType;
+ 
+ /**
+  * Base class for custom RecordReaaders for Parquet that directly materialize to `T`.
+diff --git a/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/UnsafeRowParquetRecordReader.java b/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/UnsafeRowParquetRecordReader.java
+index dade488..05f1073 100644
+--- a/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/UnsafeRowParquetRecordReader.java
++++ b/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/UnsafeRowParquetRecordReader.java
+@@ -28,27 +28,27 @@ import org.apache.spark.sql.types.Decimal;
+ import org.apache.spark.unsafe.Platform;
+ import org.apache.spark.unsafe.types.UTF8String;
+ 
+-import static org.apache.parquet.column.ValuesType.DEFINITION_LEVEL;
+-import static org.apache.parquet.column.ValuesType.REPETITION_LEVEL;
+-import static org.apache.parquet.column.ValuesType.VALUES;
++import static parquet.column.ValuesType.DEFINITION_LEVEL;
++import static parquet.column.ValuesType.REPETITION_LEVEL;
++import static parquet.column.ValuesType.VALUES;
+ 
+ import org.apache.hadoop.mapreduce.InputSplit;
+ import org.apache.hadoop.mapreduce.TaskAttemptContext;
+-import org.apache.parquet.Preconditions;
+-import org.apache.parquet.column.ColumnDescriptor;
+-import org.apache.parquet.column.Dictionary;
+-import org.apache.parquet.column.Encoding;
+-import org.apache.parquet.column.page.DataPage;
+-import org.apache.parquet.column.page.DataPageV1;
+-import org.apache.parquet.column.page.DataPageV2;
+-import org.apache.parquet.column.page.DictionaryPage;
+-import org.apache.parquet.column.page.PageReadStore;
+-import org.apache.parquet.column.page.PageReader;
+-import org.apache.parquet.column.values.ValuesReader;
+-import org.apache.parquet.io.api.Binary;
+-import org.apache.parquet.schema.OriginalType;
+-import org.apache.parquet.schema.PrimitiveType;
+-import org.apache.parquet.schema.Type;
++import parquet.Preconditions;
++import parquet.column.ColumnDescriptor;
++import parquet.column.Dictionary;
++import parquet.column.Encoding;
++import parquet.column.page.DataPage;
++import parquet.column.page.DataPageV1;
++import parquet.column.page.DataPageV2;
++import parquet.column.page.DictionaryPage;
++import parquet.column.page.PageReadStore;
++import parquet.column.page.PageReader;
++import parquet.column.values.ValuesReader;
++import parquet.io.api.Binary;
++import parquet.schema.OriginalType;
++import parquet.schema.PrimitiveType;
++import parquet.schema.Type;
+ 
+ /**
+  * A specialized RecordReader that reads into UnsafeRows directly using the Parquet column APIs.
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala b/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala
+index 58adf64..bc1dbbb 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala
+@@ -22,7 +22,7 @@ import java.util.Properties
+ import scala.collection.immutable
+ import scala.collection.JavaConverters._
+ 
+-import org.apache.parquet.hadoop.ParquetOutputCommitter
++import _root_.parquet.hadoop.ParquetOutputCommitter
+ 
+ import org.apache.spark.sql.catalyst.CatalystConf
+ 
+@@ -319,7 +319,7 @@ private[spark] object SQLConf {
+     defaultValue = Some(classOf[ParquetOutputCommitter].getName),
+     doc = "The output committer class used by Parquet. The specified class needs to be a " +
+       "subclass of org.apache.hadoop.mapreduce.OutputCommitter.  Typically, it's also a subclass " +
+-      "of org.apache.parquet.hadoop.ParquetOutputCommitter.  NOTE: 1. Instead of SQLConf, this " +
++      "of parquet.hadoop.ParquetOutputCommitter.  NOTE: 1. Instead of SQLConf, this " +
+       "option must be set in Hadoop Configuration.  2. This option overrides " +
+       "\"spark.sql.sources.outputCommitterClass\".")
+ 
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/SqlNewHadoopRDD.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/SqlNewHadoopRDD.scala
+index eea780c..fe1df20 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/SqlNewHadoopRDD.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/SqlNewHadoopRDD.scala
+@@ -164,7 +164,7 @@ private[spark] class SqlNewHadoopRDD[V: ClassTag](
+         * TODO: plumb this through a different way?
+         */
+       if (enableUnsafeRowParquetReader &&
+-        format.getClass.getName == "org.apache.parquet.hadoop.ParquetInputFormat") {
++        format.getClass.getName == "parquet.hadoop.ParquetInputFormat") {
+         val parquetReader: UnsafeRowParquetRecordReader = new UnsafeRowParquetRecordReader()
+         if (!parquetReader.tryInitialize(
+             split.serializableHadoopSplit.value, hadoopAttemptContext)) {
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystReadSupport.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystReadSupport.scala
+index a958373..82f68ee 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystReadSupport.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystReadSupport.scala
+@@ -22,11 +22,11 @@ import java.util.{Map => JMap}
+ import scala.collection.JavaConverters._
+ 
+ import org.apache.hadoop.conf.Configuration
+-import org.apache.parquet.hadoop.api.ReadSupport.ReadContext
+-import org.apache.parquet.hadoop.api.{InitContext, ReadSupport}
+-import org.apache.parquet.io.api.RecordMaterializer
+-import org.apache.parquet.schema.Type.Repetition
+-import org.apache.parquet.schema._
++import parquet.hadoop.api.ReadSupport.ReadContext
++import parquet.hadoop.api.{InitContext, ReadSupport}
++import parquet.io.api.RecordMaterializer
++import parquet.schema.Type.Repetition
++import parquet.schema._
+ 
+ import org.apache.spark.Logging
+ import org.apache.spark.deploy.SparkHadoopUtil
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystRecordMaterializer.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystRecordMaterializer.scala
+index eeead9f..407c48c 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystRecordMaterializer.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystRecordMaterializer.scala
+@@ -17,8 +17,8 @@
+ 
+ package org.apache.spark.sql.execution.datasources.parquet
+ 
+-import org.apache.parquet.io.api.{GroupConverter, RecordMaterializer}
+-import org.apache.parquet.schema.MessageType
++import parquet.io.api.{GroupConverter, RecordMaterializer}
++import parquet.schema.MessageType
+ 
+ import org.apache.spark.sql.catalyst.InternalRow
+ import org.apache.spark.sql.types.StructType
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystRowConverter.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystRowConverter.scala
+index 94298fa..1d18c51 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystRowConverter.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystRowConverter.scala
+@@ -23,11 +23,11 @@ import java.nio.ByteOrder
+ import scala.collection.JavaConverters._
+ import scala.collection.mutable.ArrayBuffer
+ 
+-import org.apache.parquet.column.Dictionary
+-import org.apache.parquet.io.api.{Binary, Converter, GroupConverter, PrimitiveConverter}
+-import org.apache.parquet.schema.OriginalType.{INT_32, LIST, UTF8}
+-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.{DOUBLE, INT32, INT64, BINARY, FIXED_LEN_BYTE_ARRAY}
+-import org.apache.parquet.schema.{GroupType, MessageType, PrimitiveType, Type}
++import parquet.column.Dictionary
++import parquet.io.api.{Binary, Converter, GroupConverter, PrimitiveConverter}
++import parquet.schema.OriginalType.{INT_32, LIST, UTF8}
++import parquet.schema.PrimitiveType.PrimitiveTypeName.{DOUBLE, INT32, INT64, BINARY, FIXED_LEN_BYTE_ARRAY}
++import parquet.schema.{GroupType, MessageType, PrimitiveType, Type}
+ 
+ import org.apache.spark.Logging
+ import org.apache.spark.sql.catalyst.InternalRow
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystSchemaConverter.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystSchemaConverter.scala
+index 5f9f908..1f8e8ae 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystSchemaConverter.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystSchemaConverter.scala
+@@ -20,10 +20,10 @@ package org.apache.spark.sql.execution.datasources.parquet
+ import scala.collection.JavaConverters._
+ 
+ import org.apache.hadoop.conf.Configuration
+-import org.apache.parquet.schema.OriginalType._
+-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName._
+-import org.apache.parquet.schema.Type.Repetition._
+-import org.apache.parquet.schema._
++import parquet.schema.OriginalType._
++import parquet.schema.PrimitiveType.PrimitiveTypeName._
++import parquet.schema.Type.Repetition._
++import parquet.schema._
+ 
+ import org.apache.spark.sql.execution.datasources.parquet.CatalystSchemaConverter.{MAX_PRECISION_FOR_INT32, MAX_PRECISION_FOR_INT64, maxPrecisionForBytes}
+ import org.apache.spark.sql.types._
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystWriteSupport.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystWriteSupport.scala
+index 6862dea..0ae401a 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystWriteSupport.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/CatalystWriteSupport.scala
+@@ -23,11 +23,11 @@ import java.util
+ import scala.collection.JavaConverters.mapAsJavaMapConverter
+ 
+ import org.apache.hadoop.conf.Configuration
+-import org.apache.parquet.column.ParquetProperties
+-import org.apache.parquet.hadoop.ParquetOutputFormat
+-import org.apache.parquet.hadoop.api.WriteSupport
+-import org.apache.parquet.hadoop.api.WriteSupport.WriteContext
+-import org.apache.parquet.io.api.{Binary, RecordConsumer}
++import parquet.column.ParquetProperties
++import parquet.hadoop.ParquetOutputFormat
++import parquet.hadoop.api.WriteSupport
++import parquet.hadoop.api.WriteSupport.WriteContext
++import parquet.io.api.{Binary, RecordConsumer}
+ 
+ import org.apache.spark.Logging
+ import org.apache.spark.sql.SQLConf
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/DirectParquetOutputCommitter.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/DirectParquetOutputCommitter.scala
+index 1a4e99f..8c62564 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/DirectParquetOutputCommitter.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/DirectParquetOutputCommitter.scala
+@@ -21,9 +21,9 @@ import org.apache.hadoop.conf.Configuration
+ import org.apache.hadoop.fs.Path
+ import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter
+ import org.apache.hadoop.mapreduce.{JobContext, TaskAttemptContext}
+-import org.apache.parquet.Log
+-import org.apache.parquet.hadoop.util.ContextUtil
+-import org.apache.parquet.hadoop.{ParquetFileReader, ParquetFileWriter, ParquetOutputCommitter, ParquetOutputFormat}
++import parquet.Log
++import parquet.hadoop.util.ContextUtil
++import parquet.hadoop.{ParquetFileReader, ParquetFileWriter, ParquetOutputCommitter, ParquetOutputFormat}
+ 
+ /**
+  * An output committer for writing Parquet files.  In stead of writing to the `_temporary` folder
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetFilters.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetFilters.scala
+index 00554e7..fdb0bea 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetFilters.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetFilters.scala
+@@ -19,11 +19,11 @@ package org.apache.spark.sql.execution.datasources.parquet
+ 
+ import java.io.Serializable
+ 
+-import org.apache.parquet.filter2.predicate.FilterApi._
+-import org.apache.parquet.filter2.predicate._
+-import org.apache.parquet.io.api.Binary
+-import org.apache.parquet.schema.OriginalType
+-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName
++import parquet.filter2.predicate.FilterApi._
++import parquet.filter2.predicate._
++import parquet.io.api.Binary
++import parquet.schema.OriginalType
++import parquet.schema.PrimitiveType.PrimitiveTypeName
+ 
+ import org.apache.spark.sql.sources
+ import org.apache.spark.sql.types._
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetRelation.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetRelation.scala
+index 4f1685a..558da61 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetRelation.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetRelation.scala
+@@ -31,12 +31,12 @@ import org.apache.hadoop.fs.{FileStatus, Path}
+ import org.apache.hadoop.io.Writable
+ import org.apache.hadoop.mapreduce._
+ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+-import org.apache.parquet.filter2.predicate.FilterApi
+-import org.apache.parquet.hadoop._
+-import org.apache.parquet.hadoop.metadata.CompressionCodecName
+-import org.apache.parquet.hadoop.util.ContextUtil
+-import org.apache.parquet.schema.MessageType
+-import org.apache.parquet.{Log => ApacheParquetLog}
++import parquet.filter2.predicate.FilterApi
++import parquet.hadoop._
++import parquet.hadoop.metadata.CompressionCodecName
++import parquet.hadoop.util.ContextUtil
++import parquet.schema.MessageType
++import parquet.{Log => ApacheParquetLog}
+ import org.slf4j.bridge.SLF4JBridgeHandler
+ 
+ import org.apache.spark.broadcast.Broadcast
+diff --git a/sql/core/src/test/resources/log4j.properties b/sql/core/src/test/resources/log4j.properties
+index 12fb128..28e90b9 100644
+--- a/sql/core/src/test/resources/log4j.properties
++++ b/sql/core/src/test/resources/log4j.properties
+@@ -36,11 +36,11 @@ log4j.appender.FA.layout.ConversionPattern=%d{HH:mm:ss.SSS} %t %p %c{1}: %m%n
+ log4j.appender.FA.Threshold = INFO
+ 
+ # Some packages are noisy for no good reason.
+-log4j.additivity.org.apache.parquet.hadoop.ParquetRecordReader=false
+-log4j.logger.org.apache.parquet.hadoop.ParquetRecordReader=OFF
++log4j.additivity.parquet.hadoop.ParquetRecordReader=false
++log4j.logger.parquet.hadoop.ParquetRecordReader=OFF
+ 
+-log4j.additivity.org.apache.parquet.hadoop.ParquetOutputCommitter=false
+-log4j.logger.org.apache.parquet.hadoop.ParquetOutputCommitter=OFF
++log4j.additivity.parquet.hadoop.ParquetOutputCommitter=false
++log4j.logger.parquet.hadoop.ParquetOutputCommitter=OFF
+ 
+ log4j.additivity.org.apache.hadoop.hive.serde2.lazy.LazyStruct=false
+ log4j.logger.org.apache.hadoop.hive.serde2.lazy.LazyStruct=OFF
+@@ -52,5 +52,5 @@ log4j.additivity.hive.ql.metadata.Hive=false
+ log4j.logger.hive.ql.metadata.Hive=OFF
+ 
+ # Parquet related logging
+-log4j.logger.org.apache.parquet.hadoop=WARN
++log4j.logger.parquet.hadoop=WARN
+ log4j.logger.org.apache.spark.sql.parquet=INFO
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetAvroCompatibilitySuite.scala b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetAvroCompatibilitySuite.scala
+index 36b929e..944bb6d 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetAvroCompatibilitySuite.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetAvroCompatibilitySuite.scala
+@@ -26,7 +26,7 @@ import scala.collection.JavaConverters._
+ import org.apache.avro.Schema
+ import org.apache.avro.generic.IndexedRecord
+ import org.apache.hadoop.fs.Path
+-import org.apache.parquet.avro.AvroParquetWriter
++import parquet.avro.AvroParquetWriter
+ 
+ import org.apache.spark.sql.Row
+ import org.apache.spark.sql.execution.datasources.parquet.test.avro._
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetCompatibilityTest.scala b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetCompatibilityTest.scala
+index 0835bd1..37978b4 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetCompatibilityTest.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetCompatibilityTest.scala
+@@ -21,11 +21,11 @@ import scala.collection.JavaConverters.{collectionAsScalaIterableConverter, mapA
+ 
+ import org.apache.hadoop.conf.Configuration
+ import org.apache.hadoop.fs.{Path, PathFilter}
+-import org.apache.parquet.hadoop.api.WriteSupport
+-import org.apache.parquet.hadoop.api.WriteSupport.WriteContext
+-import org.apache.parquet.hadoop.{ParquetFileReader, ParquetWriter}
+-import org.apache.parquet.io.api.RecordConsumer
+-import org.apache.parquet.schema.{MessageType, MessageTypeParser}
++import parquet.hadoop.api.WriteSupport
++import parquet.hadoop.api.WriteSupport.WriteContext
++import parquet.hadoop.{ParquetFileReader, ParquetWriter}
++import parquet.io.api.RecordConsumer
++import parquet.schema.{MessageType, MessageTypeParser}
+ 
+ import org.apache.spark.sql.QueryTest
+ 
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetFilterSuite.scala b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetFilterSuite.scala
+index c85956d..d56cf54 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetFilterSuite.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetFilterSuite.scala
+@@ -17,8 +17,8 @@
+ 
+ package org.apache.spark.sql.execution.datasources.parquet
+ 
+-import org.apache.parquet.filter2.predicate.Operators._
+-import org.apache.parquet.filter2.predicate.{FilterPredicate, Operators}
++import parquet.filter2.predicate.Operators._
++import parquet.filter2.predicate.{FilterPredicate, Operators}
+ 
+ import org.apache.spark.sql.{Column, DataFrame, QueryTest, Row, SQLConf}
+ import org.apache.spark.sql.catalyst.dsl.expressions._
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetIOSuite.scala b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetIOSuite.scala
+index 159c3c6..243d933 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetIOSuite.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetIOSuite.scala
+@@ -19,8 +19,6 @@ package org.apache.spark.sql.execution.datasources.parquet
+ 
+ import java.util.Collections
+ 
+-import org.apache.parquet.column.{Encoding, ParquetProperties}
+-
+ import scala.collection.JavaConverters._
+ import scala.reflect.ClassTag
+ import scala.reflect.runtime.universe.TypeTag
+@@ -28,14 +26,15 @@ import scala.reflect.runtime.universe.TypeTag
+ import org.apache.hadoop.conf.Configuration
+ import org.apache.hadoop.fs.{FileSystem, Path}
+ import org.apache.hadoop.mapreduce.{JobContext, TaskAttemptContext}
+-import org.apache.parquet.example.data.simple.SimpleGroup
+-import org.apache.parquet.example.data.{Group, GroupWriter}
+-import org.apache.parquet.hadoop._
+-import org.apache.parquet.hadoop.api.WriteSupport
+-import org.apache.parquet.hadoop.api.WriteSupport.WriteContext
+-import org.apache.parquet.hadoop.metadata.{FileMetaData, ParquetMetadata, CompressionCodecName}
+-import org.apache.parquet.io.api.RecordConsumer
+-import org.apache.parquet.schema.{MessageType, MessageTypeParser}
++import parquet.column.{Encoding, ParquetProperties}
++import parquet.example.data.simple.SimpleGroup
++import parquet.example.data.{Group, GroupWriter}
++import parquet.hadoop._
++import parquet.hadoop.api.WriteSupport
++import parquet.hadoop.api.WriteSupport.WriteContext
++import parquet.hadoop.metadata.{FileMetaData, ParquetMetadata, CompressionCodecName}
++import parquet.io.api.RecordConsumer
++import parquet.schema.{MessageType, MessageTypeParser}
+ 
+ import org.apache.spark.SparkException
+ import org.apache.spark.sql._
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetSchemaSuite.scala b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetSchemaSuite.scala
+index 60fa81b..1b0bc76 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetSchemaSuite.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetSchemaSuite.scala
+@@ -20,7 +20,7 @@ package org.apache.spark.sql.execution.datasources.parquet
+ import scala.reflect.ClassTag
+ import scala.reflect.runtime.universe.TypeTag
+ 
+-import org.apache.parquet.schema.MessageTypeParser
++import parquet.schema.MessageTypeParser
+ 
+ import org.apache.spark.sql.catalyst.ScalaReflection
+ import org.apache.spark.sql.test.SharedSQLContext
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetTest.scala b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetTest.scala
+index fdd7697..9f47133 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetTest.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/execution/datasources/parquet/ParquetTest.scala
+@@ -19,17 +19,16 @@ package org.apache.spark.sql.execution.datasources.parquet
+ 
+ import java.io.File
+ 
+-import org.apache.parquet.schema.MessageType
+-
+ import scala.collection.JavaConverters._
+ import scala.reflect.ClassTag
+ import scala.reflect.runtime.universe.TypeTag
+ 
+ import org.apache.hadoop.conf.Configuration
+ import org.apache.hadoop.fs.Path
+-import org.apache.parquet.format.converter.ParquetMetadataConverter
+-import org.apache.parquet.hadoop.metadata.{BlockMetaData, FileMetaData, ParquetMetadata}
+-import org.apache.parquet.hadoop.{Footer, ParquetFileReader, ParquetFileWriter}
++import parquet.format.converter.ParquetMetadataConverter
++import parquet.hadoop.metadata.{BlockMetaData, FileMetaData, ParquetMetadata}
++import parquet.hadoop.{Footer, ParquetFileReader, ParquetFileWriter}
++import parquet.schema.MessageType
+ 
+ import org.apache.spark.sql.test.SQLTestUtils
+ import org.apache.spark.sql.types.StructType
+diff --git a/sql/hive/src/test/resources/log4j.properties b/sql/hive/src/test/resources/log4j.properties
+index 06beb07..7652204 100644
+--- a/sql/hive/src/test/resources/log4j.properties
++++ b/sql/hive/src/test/resources/log4j.properties
+@@ -51,11 +51,11 @@ log4j.logger.hive.log=OFF
+ log4j.additivity.parquet.hadoop=false
+ log4j.logger.parquet.hadoop=ERROR
+ 
+-log4j.additivity.org.apache.parquet.hadoop.ParquetRecordReader=false
+-log4j.logger.org.apache.parquet.hadoop.ParquetRecordReader=OFF
++log4j.additivity.parquet.hadoop.ParquetRecordReader=false
++log4j.logger.parquet.hadoop.ParquetRecordReader=OFF
+ 
+-log4j.additivity.org.apache.parquet.hadoop.ParquetOutputCommitter=false
+-log4j.logger.org.apache.parquet.hadoop.ParquetOutputCommitter=OFF
++log4j.additivity.parquet.hadoop.ParquetOutputCommitter=false
++log4j.logger.parquet.hadoop.ParquetOutputCommitter=OFF
+ 
+ log4j.additivity.hive.ql.metadata.Hive=false
+ log4j.logger.hive.ql.metadata.Hive=OFF
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/sources/hadoopFsRelationSuites.scala b/sql/hive/src/test/scala/org/apache/spark/sql/sources/hadoopFsRelationSuites.scala
+index 665e87e..bd073fe 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/sources/hadoopFsRelationSuites.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/sources/hadoopFsRelationSuites.scala
+@@ -23,7 +23,7 @@ import org.apache.hadoop.conf.Configuration
+ import org.apache.hadoop.fs.Path
+ import org.apache.hadoop.mapreduce.{JobContext, TaskAttemptContext}
+ import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter
+-import org.apache.parquet.hadoop.ParquetOutputCommitter
++import parquet.hadoop.ParquetOutputCommitter
+ 
+ import org.apache.spark.deploy.SparkHadoopUtil
+ import org.apache.spark.sql._
+diff --git a/streaming/src/test/scala/org/apache/spark/streaming/UISeleniumSuite.scala b/streaming/src/test/scala/org/apache/spark/streaming/UISeleniumSuite.scala
+index a5744a9..79314bc 100644
+--- a/streaming/src/test/scala/org/apache/spark/streaming/UISeleniumSuite.scala
++++ b/streaming/src/test/scala/org/apache/spark/streaming/UISeleniumSuite.scala
+@@ -32,6 +32,7 @@ import org.apache.spark.ui.SparkUICssErrorHandler
+ /**
+  * Selenium tests for the Spark Streaming Web UI.
+  */
++@Ignore
+ class UISeleniumSuite
+   extends SparkFunSuite with WebBrowser with Matchers with BeforeAndAfterAll with TestSuiteBase {
+ 
+-- 
+1.7.9.5
+

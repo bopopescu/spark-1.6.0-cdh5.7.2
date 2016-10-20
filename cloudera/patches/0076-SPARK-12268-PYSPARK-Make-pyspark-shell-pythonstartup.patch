@@ -1,0 +1,36 @@
+From 27c086e365938555207d87ce2b01bef578371be9 Mon Sep 17 00:00:00 2001
+From: Erik Selin <erik.selin@gmail.com>
+Date: Wed, 13 Jan 2016 12:21:45 -0800
+Subject: [PATCH 076/201] [SPARK-12268][PYSPARK] Make pyspark shell
+ pythonstartup work under python3
+
+This replaces the `execfile` used for running custom python shell scripts
+with explicit open, compile and exec (as recommended by 2to3). The reason
+for this change is to make the pythonstartup option compatible with python3.
+
+Author: Erik Selin <erik.selin@gmail.com>
+
+Closes #10255 from tyro89/pythonstartup-python3.
+
+(cherry picked from commit e4e0b3f7b2945aae5ec7c3d68296010bbc5160cf)
+Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+(cherry picked from commit cf6d506c7426dbcd19d4c9d7c2d673aa52d00d4e)
+---
+ python/pyspark/shell.py |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/python/pyspark/shell.py b/python/pyspark/shell.py
+index 9933129..26cafca 100644
+--- a/python/pyspark/shell.py
++++ b/python/pyspark/shell.py
+@@ -76,4 +76,6 @@ if add_files is not None:
+ # which allows us to execute the user's PYTHONSTARTUP file:
+ _pythonstartup = os.environ.get('OLD_PYTHONSTARTUP')
+ if _pythonstartup and os.path.isfile(_pythonstartup):
+-    execfile(_pythonstartup)
++    with open(_pythonstartup) as f:
++        code = compile(f.read(), _pythonstartup, 'exec')
++        exec(code)
+-- 
+1.7.9.5
+

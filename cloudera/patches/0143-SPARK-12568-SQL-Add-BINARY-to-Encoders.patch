@@ -1,0 +1,89 @@
+From 91438a159f71ae0b6717bcf1d102ca42c00da96f Mon Sep 17 00:00:00 2001
+From: Michael Armbrust <michael@databricks.com>
+Date: Mon, 4 Jan 2016 23:23:41 -0800
+Subject: [PATCH 143/201] [SPARK-12568][SQL] Add BINARY to Encoders
+
+Author: Michael Armbrust <michael@databricks.com>
+
+Closes #10516 from marmbrus/datasetCleanup.
+
+(cherry picked from commit 53beddc5bf04a35ab73de99158919c2fdd5d4508)
+Signed-off-by: Michael Armbrust <michael@databricks.com>
+(cherry picked from commit d9e4438b5c7b3569662a50973164955332463d05)
+---
+ .../main/scala/org/apache/spark/sql/Encoder.scala  |    6 ++++++
+ .../sql/catalyst/encoders/ExpressionEncoder.scala  |    9 +++++++++
+ .../catalyst/encoders/ExpressionEncoderSuite.scala |    6 +++---
+ 3 files changed, 18 insertions(+), 3 deletions(-)
+
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/Encoder.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/Encoder.scala
+index bb0fdc4..22b7e1e 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/Encoder.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/Encoder.scala
+@@ -158,6 +158,12 @@ object Encoders {
+   def TIMESTAMP: Encoder[java.sql.Timestamp] = ExpressionEncoder()
+ 
+   /**
++    * An encoder for arrays of bytes.
++    * @since 1.6.1
++    */
++  def BINARY: Encoder[Array[Byte]] = ExpressionEncoder()
++
++  /**
+    * Creates an encoder for Java Bean of type T.
+    *
+    * T must be publicly accessible.
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/encoders/ExpressionEncoder.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/encoders/ExpressionEncoder.scala
+index ad4beda..6c05846 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/encoders/ExpressionEncoder.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/encoders/ExpressionEncoder.scala
+@@ -199,6 +199,15 @@ case class ExpressionEncoder[T](
+   private lazy val constructProjection = GenerateSafeProjection.generate(fromRowExpression :: Nil)
+ 
+   /**
++   * Returns this encoder where it has been bound to its own output (i.e. no remaping of columns
++   * is performed).
++   */
++  def defaultBinding: ExpressionEncoder[T] = {
++    val attrs = schema.toAttributes
++    resolve(attrs, OuterScopes.outerScopes).bind(attrs)
++  }
++
++  /**
+    * Returns an encoded version of `t` as a Spark SQL row.  Note that multiple calls to
+    * toRow are allowed to return the same actual [[InternalRow]] object.  Thus, the caller should
+    * copy the result before making another call if required.
+diff --git a/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/encoders/ExpressionEncoderSuite.scala b/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/encoders/ExpressionEncoderSuite.scala
+index 17b818c..98f29e5 100644
+--- a/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/encoders/ExpressionEncoderSuite.scala
++++ b/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/encoders/ExpressionEncoderSuite.scala
+@@ -77,6 +77,8 @@ class JavaSerializable(val value: Int) extends Serializable {
+ }
+ 
+ class ExpressionEncoderSuite extends SparkFunSuite {
++  OuterScopes.outerScopes.put(getClass.getName, this)
++
+   implicit def encoder[T : TypeTag]: ExpressionEncoder[T] = ExpressionEncoder()
+ 
+   // test flat encoders
+@@ -283,8 +285,6 @@ class ExpressionEncoderSuite extends SparkFunSuite {
+     }
+   }
+ 
+-  private val outers: ConcurrentMap[String, AnyRef] = new MapMaker().weakValues().makeMap()
+-  outers.put(getClass.getName, this)
+   private def encodeDecodeTest[T : ExpressionEncoder](
+       input: T,
+       testName: String): Unit = {
+@@ -292,7 +292,7 @@ class ExpressionEncoderSuite extends SparkFunSuite {
+       val encoder = implicitly[ExpressionEncoder[T]]
+       val row = encoder.toRow(input)
+       val schema = encoder.schema.toAttributes
+-      val boundEncoder = encoder.resolve(schema, outers).bind(schema)
++      val boundEncoder = encoder.defaultBinding
+       val convertedBack = try boundEncoder.fromRow(row) catch {
+         case e: Exception =>
+           fail(
+-- 
+1.7.9.5
+

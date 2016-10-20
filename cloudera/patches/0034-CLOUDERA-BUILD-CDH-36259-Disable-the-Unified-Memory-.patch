@@ -1,0 +1,26 @@
+From 53383ac43dae197e8206d5b5b2d98407568f9c83 Mon Sep 17 00:00:00 2001
+From: Imran Rashid <irashid@cloudera.com>
+Date: Mon, 25 Jan 2016 12:58:55 -0800
+Subject: [PATCH 034/201] CLOUDERA-BUILD [CDH-36259] Disable the Unified
+ Memory Manager by default in CDH5.7
+
+---
+ .../src/main/scala/org/apache/spark/SparkEnv.scala |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/SparkEnv.scala b/core/src/main/scala/org/apache/spark/SparkEnv.scala
+index 52acde1..66a1d54 100644
+--- a/core/src/main/scala/org/apache/spark/SparkEnv.scala
++++ b/core/src/main/scala/org/apache/spark/SparkEnv.scala
+@@ -346,7 +346,7 @@ object SparkEnv extends Logging {
+     val shuffleMgrClass = shortShuffleMgrNames.getOrElse(shuffleMgrName.toLowerCase, shuffleMgrName)
+     val shuffleManager = instantiateClass[ShuffleManager](shuffleMgrClass)
+ 
+-    val useLegacyMemoryManager = conf.getBoolean("spark.memory.useLegacyMode", false)
++    val useLegacyMemoryManager = conf.getBoolean("spark.memory.useLegacyMode", true)
+     val memoryManager: MemoryManager =
+       if (useLegacyMemoryManager) {
+         new StaticMemoryManager(conf, numUsableCores)
+-- 
+1.7.9.5
+

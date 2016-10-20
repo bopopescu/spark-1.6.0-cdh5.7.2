@@ -1,0 +1,42 @@
+From 1557e395bbd654694229be9c207f265ea80c5791 Mon Sep 17 00:00:00 2001
+From: Xusen Yin <yinxusen@gmail.com>
+Date: Wed, 27 Jan 2016 00:32:52 -0800
+Subject: [PATCH 109/201] [SPARK-12834][ML][PYTHON][BACKPORT] Change ser/de of
+ JavaArray and JavaList
+
+Backport of SPARK-12834 for branch-1.6
+
+Original PR: https://github.com/apache/spark/pull/10772
+
+Original commit message:
+We use `SerDe.dumps()` to serialize `JavaArray` and `JavaList` in `PythonMLLibAPI`, then deserialize them with `PickleSerializer` in Python side. However, there is no need to transform them in such an inefficient way. Instead of it, we can use type conversion to convert them, e.g. `list(JavaArray)` or `list(JavaList)`. What's more, there is an issue to Ser/De Scala Array as I said in https://issues.apache.org/jira/browse/SPARK-12780
+
+Author: Xusen Yin <yinxusen@gmail.com>
+
+Closes #10941 from jkbradley/yinxusen-SPARK-12834-1.6.
+
+(cherry picked from commit 17d1071ce8945d056da145f64797d1d10529afc1)
+---
+ .../spark/mllib/api/python/PythonMLLibAPI.scala    |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/mllib/src/main/scala/org/apache/spark/mllib/api/python/PythonMLLibAPI.scala b/mllib/src/main/scala/org/apache/spark/mllib/api/python/PythonMLLibAPI.scala
+index 29160a1..1714983 100644
+--- a/mllib/src/main/scala/org/apache/spark/mllib/api/python/PythonMLLibAPI.scala
++++ b/mllib/src/main/scala/org/apache/spark/mllib/api/python/PythonMLLibAPI.scala
+@@ -1464,7 +1464,11 @@ private[spark] object SerDe extends Serializable {
+   initialize()
+ 
+   def dumps(obj: AnyRef): Array[Byte] = {
+-    new Pickler().dumps(obj)
++    obj match {
++      // Pickler in Python side cannot deserialize Scala Array normally. See SPARK-12834.
++      case array: Array[_] => new Pickler().dumps(array.toSeq.asJava)
++      case _ => new Pickler().dumps(obj)
++    }
+   }
+ 
+   def loads(bytes: Array[Byte]): AnyRef = {
+-- 
+1.7.9.5
+

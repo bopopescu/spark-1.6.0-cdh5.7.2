@@ -1,0 +1,150 @@
+From 31fba10a7454000e27459ebcb9fc2b0db0bb3109 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Tue, 24 Feb 2015 16:31:15 -0800
+Subject: [PATCH 006/201] CLOUDERA-BUILD. Deploy the assembly artifact.
+
+This is needed for Oozie to consume it.
+
+(cherry picked from commit b3263cab3e12d0d72c58b0214966e3d035b58791)
+---
+ assembly/pom.xml                        |   69 +++++++++++++++++++------------
+ assembly/src/main/assembly/assembly.xml |    4 +-
+ 2 files changed, 44 insertions(+), 29 deletions(-)
+
+diff --git a/assembly/pom.xml b/assembly/pom.xml
+index a11b8d3..748776d 100644
+--- a/assembly/pom.xml
++++ b/assembly/pom.xml
+@@ -29,13 +29,13 @@
+   <artifactId>spark-assembly_2.10</artifactId>
+   <name>Spark Project Assembly</name>
+   <url>http://spark.apache.org/</url>
+-  <packaging>pom</packaging>
++  <packaging>jar</packaging>
+ 
+   <properties>
+     <sbt.project.name>assembly</sbt.project.name>
+-    <spark.jar.dir>scala-${scala.binary.version}</spark.jar.dir>
++    <spark.jar.dir>${project.build.directory}/scala-${scala.binary.version}</spark.jar.dir>
+     <spark.jar.basename>spark-assembly-${project.version}-hadoop${hadoop.version}.jar</spark.jar.basename>
+-    <spark.jar>${project.build.directory}/${spark.jar.dir}/${spark.jar.basename}</spark.jar>
++    <spark.jar>${spark.jar.dir}/${spark.jar.basename}</spark.jar>
+   </properties>
+ 
+   <dependencies>
+@@ -82,44 +82,22 @@
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-deploy-plugin</artifactId>
+         <configuration>
+-          <skip>true</skip>
++          <skip>false</skip>
+         </configuration>
+       </plugin>
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-install-plugin</artifactId>
+         <configuration>
+-          <skip>true</skip>
++          <skip>false</skip>
+         </configuration>
+       </plugin>
+-        <!-- zip pyspark archives to run python application on yarn mode -->
+-        <plugin>
+-          <groupId>org.apache.maven.plugins</groupId>
+-            <artifactId>maven-antrun-plugin</artifactId>
+-            <executions>
+-              <execution>
+-                <phase>package</phase>
+-                  <goals>
+-                    <goal>run</goal>
+-                  </goals>
+-              </execution>
+-            </executions>
+-            <configuration>
+-              <target>
+-                <delete dir="${basedir}/../python/lib/pyspark.zip"/>
+-                <zip destfile="${basedir}/../python/lib/pyspark.zip">
+-                  <fileset dir="${basedir}/../python/" includes="pyspark/**/*"/>
+-                </zip>
+-              </target>
+-            </configuration>
+-        </plugin>
+       <!-- Use the shade plugin to create a big JAR with all the dependencies -->
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-shade-plugin</artifactId>
+         <configuration>
+           <shadedArtifactAttached>false</shadedArtifactAttached>
+-          <outputFile>${spark.jar}</outputFile>
+           <artifactSet>
+             <includes>
+               <include>*:*</include>
+@@ -162,6 +140,43 @@
+           </execution>
+         </executions>
+       </plugin>
++      <plugin>
++        <groupId>org.apache.maven.plugins</groupId>
++        <artifactId>maven-antrun-plugin</artifactId>
++        <executions>
++          <!-- zip pyspark archives to run python application on yarn mode -->
++          <execution>
++            <id>package-pyspark</id>
++            <phase>package</phase>
++              <goals>
++                <goal>run</goal>
++              </goals>
++              <configuration>
++                <target>
++                  <delete dir="${basedir}/../python/lib/pyspark.zip"/>
++                  <zip destfile="${basedir}/../python/lib/pyspark.zip">
++                    <fileset dir="${basedir}/../python/" includes="pyspark/**/*"/>
++                  </zip>
++                </target>
++              </configuration>
++          </execution>
++          <!-- copy the assembly to the "scala-2.10" directory since lots of places expect that. -->
++          <execution>
++            <id>copy-assembly</id>
++            <phase>package</phase>
++            <goals>
++              <goal>run</goal>
++            </goals>
++            <configuration>
++              <target name="rename assembly jar">
++                <mkdir dir="${spark.jar.dir}" />
++                <copy file="${project.build.directory}/${project.artifactId}-${project.version}.jar"
++                  tofile="${spark.jar}" overwrite="true" />
++              </target>
++            </configuration>
++          </execution>
++        </executions>
++      </plugin>
+     </plugins>
+   </build>
+ 
+diff --git a/assembly/src/main/assembly/assembly.xml b/assembly/src/main/assembly/assembly.xml
+index 009d4b9..afa5903 100644
+--- a/assembly/src/main/assembly/assembly.xml
++++ b/assembly/src/main/assembly/assembly.xml
+@@ -57,7 +57,7 @@
+     </fileSet>
+     <fileSet>
+       <directory>
+-        ${project.parent.basedir}/assembly/target/${spark.jar.dir}
++        ${spark.jar.dir}
+       </directory>
+       <outputDirectory></outputDirectory>
+       <includes>
+@@ -72,7 +72,7 @@
+         <include>org.apache.spark:*:jar</include>
+       </includes>
+       <excludes>
+-        <exclude>org.apache.spark:spark-assembly:jar</exclude>
++        <exclude>org.apache.spark:spark-assembly_${scala.binary.version}:jar</exclude>
+       </excludes>
+     </dependencySet>
+     <dependencySet>
+-- 
+1.7.9.5
+

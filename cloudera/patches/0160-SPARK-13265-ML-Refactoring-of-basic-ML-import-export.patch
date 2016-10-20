@@ -1,0 +1,58 @@
+From 3ccd5ad9b93164459afe240d97b51663a136d84f Mon Sep 17 00:00:00 2001
+From: Yu ISHIKAWA <yuu.ishikawa@gmail.com>
+Date: Thu, 11 Feb 2016 15:00:23 -0800
+Subject: [PATCH 160/201] [SPARK-13265][ML] Refactoring of basic ML
+ import/export for other file system besides HDFS
+
+jkbradley I tried to improve the function to export a model. When I tried to export a model to S3 under Spark 1.6, we couldn't do that. So, it should offer S3 besides HDFS. Can you review it when you have time? Thanks!
+
+Author: Yu ISHIKAWA <yuu.ishikawa@gmail.com>
+
+Closes #11151 from yu-iskw/SPARK-13265.
+
+(cherry picked from commit efb65e09bcfa4542348f5cd37fe5c14047b862e5)
+Signed-off-by: Xiangrui Meng <meng@databricks.com>
+(cherry picked from commit 91a5ca5e84497c37de98c194566a568117332710)
+---
+ .../scala/org/apache/spark/ml/util/ReadWrite.scala |   13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/mllib/src/main/scala/org/apache/spark/ml/util/ReadWrite.scala b/mllib/src/main/scala/org/apache/spark/ml/util/ReadWrite.scala
+index 8484b1f..7b25043 100644
+--- a/mllib/src/main/scala/org/apache/spark/ml/util/ReadWrite.scala
++++ b/mllib/src/main/scala/org/apache/spark/ml/util/ReadWrite.scala
+@@ -19,10 +19,10 @@ package org.apache.spark.ml.util
+ 
+ import java.io.IOException
+ 
+-import org.apache.hadoop.fs.{FileSystem, Path}
++import org.apache.hadoop.fs.Path
+ import org.json4s._
+-import org.json4s.JsonDSL._
+ import org.json4s.jackson.JsonMethods._
++import org.json4s.JsonDSL._
+ 
+ import org.apache.spark.{Logging, SparkContext}
+ import org.apache.spark.annotation.{Experimental, Since}
+@@ -75,13 +75,14 @@ abstract class MLWriter extends BaseReadWrite with Logging {
+   @throws[IOException]("If the input path already exists but overwrite is not enabled.")
+   def save(path: String): Unit = {
+     val hadoopConf = sc.hadoopConfiguration
+-    val fs = FileSystem.get(hadoopConf)
+-    val p = new Path(path)
+-    if (fs.exists(p)) {
++    val outputPath = new Path(path)
++    val fs = outputPath.getFileSystem(hadoopConf)
++    val qualifiedOutputPath = outputPath.makeQualified(fs.getUri, fs.getWorkingDirectory)
++    if (fs.exists(qualifiedOutputPath)) {
+       if (shouldOverwrite) {
+         logInfo(s"Path $path already exists. It will be overwritten.")
+         // TODO: Revert back to the original content if save is not successful.
+-        fs.delete(p, true)
++        fs.delete(qualifiedOutputPath, true)
+       } else {
+         throw new IOException(
+           s"Path $path already exists. Please use write.overwrite().save(path) to overwrite it.")
+-- 
+1.7.9.5
+

@@ -1,0 +1,42 @@
+From 6f6e1e2183420c5b39efd80fe457f066269e0bf3 Mon Sep 17 00:00:00 2001
+From: Daoyuan Wang <daoyuan.wang@intel.com>
+Date: Tue, 29 Dec 2015 07:02:30 +0900
+Subject: [PATCH 142/201] [SPARK-12222][CORE] Deserialize RoaringBitmap using
+ Kryo serializer throw Buffer underflow exception
+
+Since we only need to implement `def skipBytes(n: Int)`,
+code in #10213 could be simplified.
+davies scwf
+
+Author: Daoyuan Wang <daoyuan.wang@intel.com>
+
+Closes #10253 from adrian-wang/kryo.
+
+(cherry picked from commit a6d385322e7dfaff600465fa5302010a5f122c6b)
+Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+(cherry picked from commit a9c52d4954aa445ab751b38ddbfd8fb6f84d7c14)
+---
+ .../apache/spark/serializer/KryoSerializer.scala   |    7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/serializer/KryoSerializer.scala b/core/src/main/scala/org/apache/spark/serializer/KryoSerializer.scala
+index 5983343..87021ec 100644
+--- a/core/src/main/scala/org/apache/spark/serializer/KryoSerializer.scala
++++ b/core/src/main/scala/org/apache/spark/serializer/KryoSerializer.scala
+@@ -405,12 +405,7 @@ private[spark] class KryoInputObjectInputBridge(
+   override def readInt(): Int = input.readInt()
+   override def readUnsignedShort(): Int = input.readShortUnsigned()
+   override def skipBytes(n: Int): Int = {
+-    var remaining: Long = n
+-    while (remaining > 0) {
+-      val skip = Math.min(Integer.MAX_VALUE, remaining).asInstanceOf[Int]
+-      input.skip(skip)
+-      remaining -= skip
+-    }
++    input.skip(n)
+     n
+   }
+   override def readFully(b: Array[Byte]): Unit = input.read(b)
+-- 
+1.7.9.5
+

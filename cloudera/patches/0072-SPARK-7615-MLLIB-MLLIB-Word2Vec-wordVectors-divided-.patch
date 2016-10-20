@@ -1,0 +1,42 @@
+From 3eb0cf2f98ac1dd9ecb54a14dda67fda398b5949 Mon Sep 17 00:00:00 2001
+From: Sean Owen <sowen@cloudera.com>
+Date: Tue, 12 Jan 2016 11:50:33 +0000
+Subject: [PATCH 072/201] [SPARK-7615][MLLIB] MLLIB Word2Vec wordVectors
+ divided by Euclidean Norm equals to zero
+
+Cosine similarity with 0 vector should be 0
+
+Related to https://github.com/apache/spark/pull/10152
+
+Author: Sean Owen <sowen@cloudera.com>
+
+Closes #10696 from srowen/SPARK-7615.
+
+(cherry picked from commit c48f2a3a5fd714ad2ff19b29337e55583988431e)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit 94b39f7777ecff3794727c186bd681fa4c6af4fd)
+---
+ .../org/apache/spark/mllib/feature/Word2Vec.scala  |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/mllib/src/main/scala/org/apache/spark/mllib/feature/Word2Vec.scala b/mllib/src/main/scala/org/apache/spark/mllib/feature/Word2Vec.scala
+index a010775..1dbedaa 100644
+--- a/mllib/src/main/scala/org/apache/spark/mllib/feature/Word2Vec.scala
++++ b/mllib/src/main/scala/org/apache/spark/mllib/feature/Word2Vec.scala
+@@ -539,7 +539,12 @@ class Word2VecModel private[spark] (
+     val cosVec = cosineVec.map(_.toDouble)
+     var ind = 0
+     while (ind < numWords) {
+-      cosVec(ind) /= wordVecNorms(ind)
++      val norm = wordVecNorms(ind)
++      if (norm == 0.0) {
++        cosVec(ind) = 0.0
++      } else {
++        cosVec(ind) /= norm
++      }
+       ind += 1
+     }
+     wordList.zip(cosVec)
+-- 
+1.7.9.5
+

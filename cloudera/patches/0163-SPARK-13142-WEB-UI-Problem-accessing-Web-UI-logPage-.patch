@@ -1,0 +1,48 @@
+From 5078a6e81f86b9ef2c78c2b01fe1eb1f226516c7 Mon Sep 17 00:00:00 2001
+From: markpavey <mark.pavey@thefilter.com>
+Date: Sat, 13 Feb 2016 08:39:43 +0000
+Subject: [PATCH 163/201] [SPARK-13142][WEB UI] Problem accessing Web UI
+ /logPage/ on Microsoft Windows
+
+Due to being on a Windows platform I have been unable to run the tests as described in the "Contributing to Spark" instructions. As the change is only to two lines of code in the Web UI, which I have manually built and tested, I am submitting this pull request anyway. I hope this is OK.
+
+Is it worth considering also including this fix in any future 1.5.x releases (if any)?
+
+I confirm this is my own original work and license it to the Spark project under its open source license.
+
+Author: markpavey <mark.pavey@thefilter.com>
+
+Closes #11135 from markpavey/JIRA_SPARK-13142_WindowsWebUILogFix.
+
+(cherry picked from commit 374c4b2869fc50570a68819cf0ece9b43ddeb34b)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit 93a55f3df3c9527ecf4143cb40ac7212bc3a975a)
+---
+ .../apache/spark/deploy/worker/ui/LogPage.scala    |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/deploy/worker/ui/LogPage.scala b/core/src/main/scala/org/apache/spark/deploy/worker/ui/LogPage.scala
+index 5a1d06e..15f88e7 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/worker/ui/LogPage.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/worker/ui/LogPage.scala
+@@ -30,7 +30,7 @@ import org.apache.spark.util.logging.RollingFileAppender
+ 
+ private[ui] class LogPage(parent: WorkerWebUI) extends WebUIPage("logPage") with Logging {
+   private val worker = parent.worker
+-  private val workDir = parent.workDir
++  private val workDir = new File(parent.workDir.toURI.normalize().getPath)
+   private val supportedLogTypes = Set("stderr", "stdout")
+ 
+   def renderLog(request: HttpServletRequest): String = {
+@@ -138,7 +138,7 @@ private[ui] class LogPage(parent: WorkerWebUI) extends WebUIPage("logPage") with
+     }
+ 
+     // Verify that the normalized path of the log directory is in the working directory
+-    val normalizedUri = new URI(logDirectory).normalize()
++    val normalizedUri = new File(logDirectory).toURI.normalize()
+     val normalizedLogDir = new File(normalizedUri.getPath)
+     if (!Utils.isInDirectory(workDir, normalizedLogDir)) {
+       return ("Error: invalid log directory " + logDirectory, 0, 0, 0)
+-- 
+1.7.9.5
+

@@ -1,0 +1,59 @@
+From c49e10d08a5f301984c96281b7aff06af2509472 Mon Sep 17 00:00:00 2001
+From: CK50 <christian.kurz@oracle.com>
+Date: Thu, 24 Dec 2015 13:39:11 +0000
+Subject: [PATCH 040/201] [SPARK-12010][SQL] Spark JDBC requires support for
+ column-name-free INSERT syntax
+
+In the past Spark JDBC write only worked with technologies which support the following INSERT statement syntax (JdbcUtils.scala: insertStatement()):
+
+INSERT INTO $table VALUES ( ?, ?, ..., ? )
+
+But some technologies require a list of column names:
+
+INSERT INTO $table ( $colNameList ) VALUES ( ?, ?, ..., ? )
+
+This was blocking the use of e.g. the Progress JDBC Driver for Cassandra.
+
+Another limitation is that syntax 1 relies no the dataframe field ordering match that of the target table. This works fine, as long as the target table has been created by writer.jdbc().
+
+If the target table contains more columns (not created by writer.jdbc()), then the insert fails due mismatch of number of columns or their data types.
+
+This PR switches to the recommended second INSERT syntax. Column names are taken from datafram field names.
+
+Author: CK50 <christian.kurz@oracle.com>
+
+Closes #10380 from CK50/master-SPARK-12010-2.
+
+(cherry picked from commit 502476e45c314a1229b3bce1c61f5cb94a9fc04b)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit 865dd8bccfc994310ad6664151d469043706ef3b)
+---
+ .../sql/execution/datasources/jdbc/JdbcUtils.scala |   12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/jdbc/JdbcUtils.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/jdbc/JdbcUtils.scala
+index 252f1cf..28cd688 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/jdbc/JdbcUtils.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/jdbc/JdbcUtils.scala
+@@ -63,14 +63,10 @@ object JdbcUtils extends Logging {
+    * Returns a PreparedStatement that inserts a row into table via conn.
+    */
+   def insertStatement(conn: Connection, table: String, rddSchema: StructType): PreparedStatement = {
+-    val sql = new StringBuilder(s"INSERT INTO $table VALUES (")
+-    var fieldsLeft = rddSchema.fields.length
+-    while (fieldsLeft > 0) {
+-      sql.append("?")
+-      if (fieldsLeft > 1) sql.append(", ") else sql.append(")")
+-      fieldsLeft = fieldsLeft - 1
+-    }
+-    conn.prepareStatement(sql.toString())
++    val columns = rddSchema.fields.map(_.name).mkString(",")
++    val placeholders = rddSchema.fields.map(_ => "?").mkString(",")
++    val sql = s"INSERT INTO $table ($columns) VALUES ($placeholders)"
++    conn.prepareStatement(sql)
+   }
+ 
+   /**
+-- 
+1.7.9.5
+

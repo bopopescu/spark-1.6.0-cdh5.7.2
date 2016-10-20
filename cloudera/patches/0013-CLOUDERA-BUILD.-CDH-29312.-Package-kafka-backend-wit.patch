@@ -1,0 +1,77 @@
+From b546491b0deeffbbe6a68ec30b6b499100f7ac3a Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Thu, 13 Aug 2015 15:47:28 -0700
+Subject: [PATCH 013/201] CLOUDERA-BUILD. CDH-29312. Package kafka backend
+ with Spark.
+
+This makes it easy to deploy streaming applications that use Kafka
+in CDH, by removing the requirement to package the integration bits
+with the application.
+
+(cherry picked from commit 8c4dd4b9be8cf4841816fe4953934705e693c194)
+---
+ assembly/pom.xml                  |   15 +++++++++++++++
+ pom.xml                           |    2 ++
+ python/pyspark/streaming/kafka.py |    6 ++++--
+ 3 files changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/assembly/pom.xml b/assembly/pom.xml
+index fa701a0..597ae5c 100644
+--- a/assembly/pom.xml
++++ b/assembly/pom.xml
+@@ -66,6 +66,21 @@
+     </dependency>
+     <dependency>
+       <groupId>org.apache.spark</groupId>
++      <artifactId>spark-streaming-kafka_${scala.binary.version}</artifactId>
++      <version>${project.version}</version>
++      <exclusions>
++        <!--
++          Kafka is already packaged with Flume, and on CDH all of Flume's libraries are
++          added to Spark's classpath. So avoid repackaging it.
++        -->
++        <exclusion>
++          <groupId>org.apache.kafka</groupId>
++          <artifactId>kafka_${scala.binary.version}</artifactId>
++        </exclusion>
++      </exclusions>
++    </dependency>
++    <dependency>
++      <groupId>org.apache.spark</groupId>
+       <artifactId>spark-graphx_${scala.binary.version}</artifactId>
+       <version>${project.version}</version>
+     </dependency>
+diff --git a/pom.xml b/pom.xml
+index dd52541..c907755 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -114,7 +114,9 @@
+     <module>repl</module>
+     <module>launcher</module>
+     <module>external/kafka</module>
++    <!-- Disabled in CDH
+     <module>external/kafka-assembly</module>
++    -->
+   </modules>
+ 
+   <properties>
+diff --git a/python/pyspark/streaming/kafka.py b/python/pyspark/streaming/kafka.py
+index cdf97ec..ebd8002 100644
+--- a/python/pyspark/streaming/kafka.py
++++ b/python/pyspark/streaming/kafka.py
+@@ -339,8 +339,10 @@ class KafkaRDD(RDD):
+             helper = helperClass.newInstance()
+             joffsetRanges = helper.offsetRangesOfKafkaRDD(self._jrdd.rdd())
+         except Py4JJavaError as e:
+-            if 'ClassNotFoundException' in str(e.java_exception):
+-                KafkaUtils._printErrorMsg(self.ctx)
++            # spark-streaming-kafka is in CDH's assembly so this should never happen. Just
++            # let the exception bubble up.
++            #if 'ClassNotFoundException' in str(e.java_exception):
++            #    KafkaUtils._printErrorMsg(self.ctx)
+             raise e
+ 
+         ranges = [OffsetRange(o.topic(), o.partition(), o.fromOffset(), o.untilOffset())
+-- 
+1.7.9.5
+

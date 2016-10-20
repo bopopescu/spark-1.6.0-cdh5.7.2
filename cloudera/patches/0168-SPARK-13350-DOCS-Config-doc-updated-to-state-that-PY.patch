@@ -1,0 +1,33 @@
+From 040facd32ee074bd46f5152977937968817f6a78 Mon Sep 17 00:00:00 2001
+From: "Christopher C. Aycock" <chris@chrisaycock.com>
+Date: Wed, 17 Feb 2016 11:24:18 -0800
+Subject: [PATCH 168/201] [SPARK-13350][DOCS] Config doc updated to state that
+ PYSPARK_PYTHON's default is "python2.7"
+
+Author: Christopher C. Aycock <chris@chrisaycock.com>
+
+Closes #11239 from chrisaycock/master.
+
+(cherry picked from commit a7c74d7563926573c01baf613708a0f105a03e57)
+Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+(cherry picked from commit 66106a660149607348b8e51994eb2ce29d67abc0)
+---
+ docs/configuration.md |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/docs/configuration.md b/docs/configuration.md
+index 5cf0705..9cb4049 100644
+--- a/docs/configuration.md
++++ b/docs/configuration.md
+@@ -1738,7 +1738,7 @@ The following variables can be set in `spark-env.sh`:
+   </tr>
+   <tr>
+     <td><code>PYSPARK_PYTHON</code></td>
+-    <td>Python binary executable to use for PySpark in both driver and workers (default is <code>python</code>).</td>
++    <td>Python binary executable to use for PySpark in both driver and workers (default is <code>python2.7</code> if available, otherwise <code>python</code>).</td>
+   </tr>
+   <tr>
+     <td><code>PYSPARK_DRIVER_PYTHON</code></td>
+-- 
+1.7.9.5
+

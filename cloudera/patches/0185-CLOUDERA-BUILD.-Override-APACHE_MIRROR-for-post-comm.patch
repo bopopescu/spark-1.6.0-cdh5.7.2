@@ -1,0 +1,24 @@
+From b66c9f9def820803822293b52c5bff11aeed1568 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Fri, 8 Apr 2016 10:18:12 -0700
+Subject: [PATCH 185/201] CLOUDERA-BUILD. Override APACHE_MIRROR for
+ post-commit builds.
+
+(cherry picked from commit 5e9cc850ff63078de9198133572ca7114740672a)
+---
+ cloudera/post_commit_hook.sh |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/cloudera/post_commit_hook.sh b/cloudera/post_commit_hook.sh
+index c9f3ac1..f74b0a7 100644
+--- a/cloudera/post_commit_hook.sh
++++ b/cloudera/post_commit_hook.sh
+@@ -39,4 +39,5 @@ MVN_REPO_LOCAL=${WORKSPACE:-$HOME}/.m2/repository
+ export MAVEN_OPTS="-XX:PermSize=1024m -XX:MaxPermSize=1024m -XX:ReservedCodeCacheSize=512m"
+ 
+ # Build is done by the packaging job before this gets called anyways, so we simply run tests
++export APACHE_MIRROR=http://mirror.infra.cloudera.com/apache
+ ./build/mvn --force -B -Dcdh.build=true -P-hive -pl \!docker-integration-tests test -fae -Dmaven.repo.local="$MVN_REPO_LOCAL"
+-- 
+1.7.9.5
+

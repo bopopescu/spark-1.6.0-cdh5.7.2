@@ -1,0 +1,33 @@
+From dcd14c55caff55ea31da62dd109d26abf346742a Mon Sep 17 00:00:00 2001
+From: Michael Armbrust <michael@databricks.com>
+Date: Mon, 22 Feb 2016 15:27:29 -0800
+Subject: [PATCH 136/201] [SPARK-12546][SQL] Change default number of open
+ parquet files
+
+A common problem that users encounter with Spark 1.6.0 is that writing to a partitioned parquet table OOMs.  The root cause is that parquet allocates a significant amount of memory that is not accounted for by our own mechanisms.  As a workaround, we can ensure that only a single file is open per task unless the user explicitly asks for more.
+
+Author: Michael Armbrust <michael@databricks.com>
+
+Closes #11308 from marmbrus/parquetWriteOOM.
+
+(cherry picked from commit 173aa949c309ff7a7a03e9d762b9108542219a95)
+---
+ .../main/scala/org/apache/spark/sql/SQLConf.scala  |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala b/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala
+index 495f562..e6c87b0 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala
+@@ -396,7 +396,7 @@ private[spark] object SQLConf {
+ 
+   val PARTITION_MAX_FILES =
+     intConf("spark.sql.sources.maxConcurrentWrites",
+-      defaultValue = Some(5),
++      defaultValue = Some(1),
+       doc = "The maximum number of concurrent files to open before falling back on sorting when " +
+             "writing out files using dynamic partitioning.")
+ 
+-- 
+1.7.9.5
+

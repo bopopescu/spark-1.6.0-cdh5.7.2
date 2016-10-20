@@ -1,0 +1,90 @@
+From fba7e5eb490702dcd25772c9aa1d7514b445e64f Mon Sep 17 00:00:00 2001
+From: Yin Huai <yhuai@databricks.com>
+Date: Tue, 12 Jan 2016 15:15:10 -0800
+Subject: [PATCH 147/201] Revert "[SPARK-12645][SPARKR] SparkR support hash
+ function"
+
+This reverts commit 8b5f23043322254c725c703c618ba3d3cc4a4240.
+
+(cherry picked from commit 03e523e520b4717a7932859e0bc7d43e5b08dd92)
+---
+ R/pkg/NAMESPACE                           |    1 -
+ R/pkg/R/functions.R                       |   20 --------------------
+ R/pkg/R/generics.R                        |    4 ----
+ R/pkg/inst/tests/testthat/test_sparkSQL.R |    2 +-
+ 4 files changed, 1 insertion(+), 26 deletions(-)
+
+diff --git a/R/pkg/NAMESPACE b/R/pkg/NAMESPACE
+index 34be7f0..beacc39 100644
+--- a/R/pkg/NAMESPACE
++++ b/R/pkg/NAMESPACE
+@@ -130,7 +130,6 @@ exportMethods("%in%",
+               "count",
+               "countDistinct",
+               "crc32",
+-              "hash",
+               "cume_dist",
+               "date_add",
+               "date_format",
+diff --git a/R/pkg/R/functions.R b/R/pkg/R/functions.R
+index 9bb7876..df36bc8 100644
+--- a/R/pkg/R/functions.R
++++ b/R/pkg/R/functions.R
+@@ -340,26 +340,6 @@ setMethod("crc32",
+             column(jc)
+           })
+ 
+-#' hash
+-#'
+-#' Calculates the hash code of given columns, and returns the result as a int column.
+-#'
+-#' @rdname hash
+-#' @name hash
+-#' @family misc_funcs
+-#' @export
+-#' @examples \dontrun{hash(df$c)}
+-setMethod("hash",
+-          signature(x = "Column"),
+-          function(x, ...) {
+-            jcols <- lapply(list(x, ...), function (x) {
+-              stopifnot(class(x) == "Column")
+-              x@jc
+-            })
+-            jc <- callJStatic("org.apache.spark.sql.functions", "hash", jcols)
+-            column(jc)
+-          })
+-
+ #' dayofmonth
+ #'
+ #' Extracts the day of the month as an integer from a given date/timestamp/string.
+diff --git a/R/pkg/R/generics.R b/R/pkg/R/generics.R
+index 5ba68e3..ba68617 100644
+--- a/R/pkg/R/generics.R
++++ b/R/pkg/R/generics.R
+@@ -736,10 +736,6 @@ setGeneric("countDistinct", function(x, ...) { standardGeneric("countDistinct")
+ #' @export
+ setGeneric("crc32", function(x) { standardGeneric("crc32") })
+ 
+-#' @rdname hash
+-#' @export
+-setGeneric("hash", function(x, ...) { standardGeneric("hash") })
+-
+ #' @rdname cume_dist
+ #' @export
+ setGeneric("cume_dist", function(x) { standardGeneric("cume_dist") })
+diff --git a/R/pkg/inst/tests/testthat/test_sparkSQL.R b/R/pkg/inst/tests/testthat/test_sparkSQL.R
+index e7c7eec..73f311e 100644
+--- a/R/pkg/inst/tests/testthat/test_sparkSQL.R
++++ b/R/pkg/inst/tests/testthat/test_sparkSQL.R
+@@ -918,7 +918,7 @@ test_that("column functions", {
+   c <- column("a")
+   c1 <- abs(c) + acos(c) + approxCountDistinct(c) + ascii(c) + asin(c) + atan(c)
+   c2 <- avg(c) + base64(c) + bin(c) + bitwiseNOT(c) + cbrt(c) + ceil(c) + cos(c)
+-  c3 <- cosh(c) + count(c) + crc32(c) + hash(c) + exp(c)
++  c3 <- cosh(c) + count(c) + crc32(c) + exp(c)
+   c4 <- explode(c) + expm1(c) + factorial(c) + first(c) + floor(c) + hex(c)
+   c5 <- hour(c) + initcap(c) + last(c) + last_day(c) + length(c)
+   c6 <- log(c) + (c) + log1p(c) + log2(c) + lower(c) + ltrim(c) + max(c) + md5(c)
+-- 
+1.7.9.5
+

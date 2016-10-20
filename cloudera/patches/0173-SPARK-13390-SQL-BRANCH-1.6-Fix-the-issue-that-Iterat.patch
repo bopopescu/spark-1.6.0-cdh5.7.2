@@ -1,0 +1,76 @@
+From eca750a15829c0ecafc61c1c0986cf431095d9a9 Mon Sep 17 00:00:00 2001
+From: Shixiong Zhu <shixiong@databricks.com>
+Date: Wed, 24 Feb 2016 13:35:36 +0000
+Subject: [PATCH 173/201] [SPARK-13390][SQL][BRANCH-1.6] Fix the issue that
+ Iterator.map().toSeq is not Serializable
+
+## What changes were proposed in this pull request?
+
+`scala.collection.Iterator`'s methods (e.g., map, filter) will return an `AbstractIterator` which is not Serializable. E.g.,
+```Scala
+scala> val iter = Array(1, 2, 3).iterator.map(_ + 1)
+iter: Iterator[Int] = non-empty iterator
+
+scala> println(iter.isInstanceOf[Serializable])
+false
+```
+If we call something like `Iterator.map(...).toSeq`, it will create a `Stream` that contains a non-serializable `AbstractIterator` field and make the `Stream` be non-serializable.
+
+This PR uses `toArray` instead of `toSeq` to fix such issue in `def createDataFrame(data: java.util.List[_], beanClass: Class[_]): DataFrame`.
+
+## How was the this patch tested?
+
+Jenkins tests.
+
+Author: Shixiong Zhu <shixiong@databricks.com>
+
+Closes #11334 from zsxwing/SPARK-13390.
+
+(cherry picked from commit 06f4fce29227f9763d9f9abff6e7459542dce261)
+---
+ .../scala/org/apache/spark/sql/SQLContext.scala    |    2 +-
+ .../org/apache/spark/sql/SQLContextSuite.scala     |   17 +++++++++++++++++
+ 2 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/SQLContext.scala b/sql/core/src/main/scala/org/apache/spark/sql/SQLContext.scala
+index db286ea..a5398d9 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/SQLContext.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/SQLContext.scala
+@@ -604,7 +604,7 @@ class SQLContext private[sql](
+     val className = beanClass.getName
+     val beanInfo = Introspector.getBeanInfo(beanClass)
+     val rows = SQLContext.beansToRows(data.asScala.iterator, beanInfo, attrSeq)
+-    DataFrame(self, LocalRelation(attrSeq, rows.toSeq))
++    DataFrame(self, LocalRelation(attrSeq, rows.toArray))
+   }
+ 
+ 
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/SQLContextSuite.scala b/sql/core/src/test/scala/org/apache/spark/sql/SQLContextSuite.scala
+index 1994dac..9bf865d 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/SQLContextSuite.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/SQLContextSuite.scala
+@@ -65,4 +65,21 @@ class SQLContextSuite extends SparkFunSuite with SharedSparkContext{
+       session2.sql("select myadd(1, 2)").explain()
+     }
+   }
++
++  test("SPARK-13390: createDataFrame(java.util.List[_],Class[_]) NotSerializableException") {
++    val rows = new java.util.ArrayList[IntJavaBean]()
++    rows.add(new IntJavaBean(1))
++    val sqlContext = SQLContext.getOrCreate(sc)
++    // Without the fix for SPARK-13390, this will throw NotSerializableException
++    sqlContext.createDataFrame(rows, classOf[IntJavaBean]).groupBy("int").count().collect()
++  }
++}
++
++class IntJavaBean(private var i: Int) extends Serializable {
++
++  def getInt(): Int = i
++
++  def setInt(i: Int): Unit = {
++    this.i = i
++  }
+ }
+-- 
+1.7.9.5
+

@@ -1,0 +1,68 @@
+From b0b30378b31756e1b5296ce7bbe6786d21f1987e Mon Sep 17 00:00:00 2001
+From: BrianLondon <brian@seatgeek.com>
+Date: Tue, 5 Jan 2016 23:15:07 +0000
+Subject: [PATCH 056/201] [SPARK-12453][STREAMING] Remove explicit dependency
+ on aws-java-sdk
+
+Successfully ran kinesis demo on a live, aws hosted kinesis stream against master and 1.6 branches.  For reasons I don't entirely understand it required a manual merge to 1.5 which I did as shown here: https://github.com/BrianLondon/spark/commit/075c22e89bc99d5e99be21f40e0d72154a1e23a2
+
+The demo ran successfully on the 1.5 branch as well.
+
+According to `mvn dependency:tree` it is still pulling a fairly old version of the aws-java-sdk (1.9.37), but this appears to have fixed the kinesis regression in 1.5.2.
+
+Author: BrianLondon <brian@seatgeek.com>
+
+Closes #10492 from BrianLondon/remove-only.
+
+(cherry picked from commit ff89975543b153d0d235c0cac615d45b34aa8fe7)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit bf3dca2df4dd3be264691be1321e0c700d4f4e32)
+---
+ extras/kinesis-asl/pom.xml                         |    5 -----
+ .../spark/streaming/kinesis/KinesisReceiver.scala  |    1 +
+ pom.xml                                            |    1 -
+ 3 files changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/extras/kinesis-asl/pom.xml b/extras/kinesis-asl/pom.xml
+index e37d174..8b72edb 100644
+--- a/extras/kinesis-asl/pom.xml
++++ b/extras/kinesis-asl/pom.xml
+@@ -61,11 +61,6 @@
+     </dependency>
+     <dependency>
+       <groupId>com.amazonaws</groupId>
+-      <artifactId>aws-java-sdk</artifactId>
+-      <version>${aws.java.sdk.version}</version>
+-    </dependency>
+-    <dependency>
+-      <groupId>com.amazonaws</groupId>
+       <artifactId>amazon-kinesis-producer</artifactId>
+       <version>${aws.kinesis.producer.version}</version>
+       <scope>test</scope>
+diff --git a/extras/kinesis-asl/src/main/scala/org/apache/spark/streaming/kinesis/KinesisReceiver.scala b/extras/kinesis-asl/src/main/scala/org/apache/spark/streaming/kinesis/KinesisReceiver.scala
+index 80edda5..abb9b6c 100644
+--- a/extras/kinesis-asl/src/main/scala/org/apache/spark/streaming/kinesis/KinesisReceiver.scala
++++ b/extras/kinesis-asl/src/main/scala/org/apache/spark/streaming/kinesis/KinesisReceiver.scala
+@@ -185,6 +185,7 @@ private[kinesis] class KinesisReceiver[T](
+     workerThread.setName(s"Kinesis Receiver ${streamId}")
+     workerThread.setDaemon(true)
+     workerThread.start()
++
+     logInfo(s"Started receiver with workerId $workerId")
+   }
+ 
+diff --git a/pom.xml b/pom.xml
+index 0694753..6f1e098 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -157,7 +157,6 @@
+     <avro.version>${cdh.avro.version}</avro.version>
+     <avro.mapred.classifier>hadoop2</avro.mapred.classifier>
+     <jets3t.version>${cdh.jets3t.version}</jets3t.version>
+-    <aws.java.sdk.version>1.9.40</aws.java.sdk.version>
+     <aws.kinesis.client.version>1.4.0</aws.kinesis.client.version>
+     <!-- the producer is used in tests -->
+     <aws.kinesis.producer.version>0.10.1</aws.kinesis.producer.version>
+-- 
+1.7.9.5
+

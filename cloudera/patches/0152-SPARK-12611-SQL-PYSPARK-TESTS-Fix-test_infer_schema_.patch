@@ -1,0 +1,35 @@
+From 10c3f7d900f206273aecb1e79f93078987d29047 Mon Sep 17 00:00:00 2001
+From: Holden Karau <holden@us.ibm.com>
+Date: Sun, 3 Jan 2016 17:04:35 -0800
+Subject: [PATCH 152/201] [SPARK-12611][SQL][PYSPARK][TESTS] Fix
+ test_infer_schema_to_local
+
+Previously (when the PR was first created) not specifying b= explicitly was fine (and treated as default null) - instead be explicit about b being None in the test.
+
+Author: Holden Karau <holden@us.ibm.com>
+
+Closes #10564 from holdenk/SPARK-12611-fix-test-infer-schema-local.
+
+(cherry picked from commit 13dab9c3862cc454094cd9ba7b4504a2d095028f)
+Signed-off-by: Yin Huai <yhuai@databricks.com>
+(cherry picked from commit 85518eda459a48c72a629b4cb9994fc753f72a58)
+---
+ python/pyspark/sql/tests.py |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/python/pyspark/sql/tests.py b/python/pyspark/sql/tests.py
+index 2c340ad..6b06984 100644
+--- a/python/pyspark/sql/tests.py
++++ b/python/pyspark/sql/tests.py
+@@ -360,7 +360,7 @@ class SQLTests(ReusedPySparkTestCase):
+         df2 = self.sqlCtx.createDataFrame(rdd, samplingRatio=1.0)
+         self.assertEqual(df.schema, df2.schema)
+ 
+-        rdd = self.sc.parallelize(range(10)).map(lambda x: Row(a=x))
++        rdd = self.sc.parallelize(range(10)).map(lambda x: Row(a=x, b=None))
+         df3 = self.sqlCtx.createDataFrame(rdd, df.schema)
+         self.assertEqual(10, df3.count())
+ 
+-- 
+1.7.9.5
+

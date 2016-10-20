@@ -1,0 +1,78 @@
+From b1550680ce15e04420b885f04b99a35303823558 Mon Sep 17 00:00:00 2001
+From: gatorsmile <gatorsmile@gmail.com>
+Date: Mon, 1 Feb 2016 11:22:02 -0800
+Subject: [PATCH 114/201] [SPARK-12989][SQL] Delaying Alias Cleanup after
+ ExtractWindowExpressions
+
+JIRA: https://issues.apache.org/jira/browse/SPARK-12989
+
+In the rule `ExtractWindowExpressions`, we simply replace alias by the corresponding attribute. However, this will cause an issue exposed by the following case:
+
+```scala
+val data = Seq(("a", "b", "c", 3), ("c", "b", "a", 3)).toDF("A", "B", "C", "num")
+  .withColumn("Data", struct("A", "B", "C"))
+  .drop("A")
+  .drop("B")
+  .drop("C")
+
+val winSpec = Window.partitionBy("Data.A", "Data.B").orderBy($"num".desc)
+data.select($"*", max("num").over(winSpec) as "max").explain(true)
+```
+In this case, both `Data.A` and `Data.B` are `alias` in `WindowSpecDefinition`. If we replace these alias expression by their alias names, we are unable to know what they are since they will not be put in `missingExpr` too.
+
+Author: gatorsmile <gatorsmile@gmail.com>
+Author: xiaoli <lixiao1983@gmail.com>
+Author: Xiao Li <xiaoli@Xiaos-MacBook-Pro.local>
+
+Closes #10963 from gatorsmile/seletStarAfterColDrop.
+
+(cherry picked from commit 33c8a490f7f64320c53530a57bd8d34916e3607c)
+Signed-off-by: Michael Armbrust <michael@databricks.com>
+(cherry picked from commit 9a5b25d0f8543e24b4d00497399790930c01246f)
+---
+ .../spark/sql/catalyst/analysis/Analyzer.scala     |    5 +++--
+ .../spark/sql/hive/HiveDataFrameWindowSuite.scala  |   10 ++++++++++
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala
+index 6a805f5..8c3cdfb 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala
+@@ -862,12 +862,13 @@ class Analyzer(
+           if (missingExpr.nonEmpty) {
+             extractedExprBuffer += ne
+           }
+-          ne.toAttribute
++          // alias will be cleaned in the rule CleanupAliases
++          ne
+         case e: Expression if e.foldable =>
+           e // No need to create an attribute reference if it will be evaluated as a Literal.
+         case e: Expression =>
+           // For other expressions, we extract it and replace it with an AttributeReference (with
+-          // an interal column name, e.g. "_w0").
++          // an internal column name, e.g. "_w0").
+           val withName = Alias(e, s"_w${extractedExprBuffer.length}")()
+           extractedExprBuffer += withName
+           withName.toAttribute
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveDataFrameWindowSuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveDataFrameWindowSuite.scala
+index 2c98f1c..b740f68 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveDataFrameWindowSuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveDataFrameWindowSuite.scala
+@@ -256,4 +256,14 @@ class HiveDataFrameWindowSuite extends QueryTest with TestHiveSingleton {
+         Row(3, 11, 6) :: Row(2, 13, 2) :: Row(1, 13, null) :: Nil)
+ 
+   }
++
++  test("SPARK-12989 ExtractWindowExpressions treats alias as regular attribute") {
++    val src = Seq((0, 3, 5)).toDF("a", "b", "c")
++      .withColumn("Data", struct("a", "b"))
++      .drop("a")
++      .drop("b")
++    val winSpec = Window.partitionBy("Data.a", "Data.b").orderBy($"c".desc)
++    val df = src.select($"*", max("c").over(winSpec) as "max")
++    checkAnswer(df, Row(5, Row(0, 3), 5))
++  }
+ }
+-- 
+1.7.9.5
+

@@ -1,0 +1,65 @@
+From 47367efac429368970e62a2906db048909def02d Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Thu, 12 Nov 2015 15:57:18 -0800
+Subject: [PATCH 020/201] CLOUDERA-BUILD. CDH-33655. Use version of Spark
+ defined in user configuration.
+
+During rolling upgrades, the activated parcel and the active client
+configuration in /etc/spark may not match. This may cause jobs to fail to
+launch because the config is tailored for a particular Spark version.
+
+This change detects when the versions do not match and runs Spark from the
+version defined in the configuration, warning the user that this is
+happening.
+
+(cherry picked from commit 5ce1d7c599364a07ce0b98793b56e302e0025c23)
+---
+ bin/load-spark-env.sh |   20 +++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/bin/load-spark-env.sh b/bin/load-spark-env.sh
+index eaea964..b80fcb5 100644
+--- a/bin/load-spark-env.sh
++++ b/bin/load-spark-env.sh
+@@ -26,6 +26,9 @@ if [ -z "${SPARK_HOME}" ]; then
+   export SPARK_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+ fi
+ 
++# Save SPARK_HOME in case the user's spark-env.sh overwrites it.
++ORIGINAL_SPARK_HOME="$SPARK_HOME"
++
+ if [ -z "$SPARK_ENV_LOADED" ]; then
+   export SPARK_ENV_LOADED=1
+ 
+@@ -45,7 +48,7 @@ fi
+ # Setting SPARK_SCALA_VERSION if not already set.
+ 
+ if [ -z "$SPARK_SCALA_VERSION" ]; then
+-
++  USER_SCALA_VERSION_SET=0
+   ASSEMBLY_DIR2="${SPARK_HOME}/assembly/target/scala-2.11"
+   ASSEMBLY_DIR1="${SPARK_HOME}/assembly/target/scala-2.10"
+ 
+@@ -60,4 +63,19 @@ if [ -z "$SPARK_SCALA_VERSION" ]; then
+   else
+     export SPARK_SCALA_VERSION="2.10"
+   fi
++else
++    USER_SCALA_VERSION_SET=1
++fi
++
++# Check that the user's SPARK_HOME and the expected SPARK_HOME match. If they don't, issue a
++# warning, and delegate execution to the user-defined SPARK_HOME.
++if [ "$SPARK_HOME" != "$ORIGINAL_SPARK_HOME" ]; then
++  SCRIPT=$(basename "$0")
++  echo "WARNING: User-defined SPARK_HOME ($SPARK_HOME) overrides detected ($ORIGINAL_SPARK_HOME)." 1>&2
++  echo "WARNING: Running $SCRIPT from user-defined location." 1>&2
++  if [ $USER_SCALA_VERSION_SET = 0 ]; then
++    unset SPARK_SCALA_VERSION
++  fi
++  unset SPARK_ENV_LOADED
++  exec "$SPARK_HOME/bin/$SCRIPT" "$@"
+ fi
+-- 
+1.7.9.5
+

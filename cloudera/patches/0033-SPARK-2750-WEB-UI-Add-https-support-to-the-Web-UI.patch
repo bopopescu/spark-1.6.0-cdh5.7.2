@@ -1,0 +1,1011 @@
+From d7759bf009ef6d2d3e8b2828f45043c0d39192d0 Mon Sep 17 00:00:00 2001
+From: scwf <wangfei1@huawei.com>
+Date: Tue, 19 Jan 2016 14:49:55 -0800
+Subject: [PATCH 033/201] [SPARK-2750][WEB UI] Add https support to the Web UI
+
+Author: scwf <wangfei1@huawei.com>
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Author: WangTaoTheTonic <wangtao111@huawei.com>
+Author: w00228970 <wangfei1@huawei.com>
+
+Closes #10238 from vanzin/SPARK-2750.
+
+(cherry picked from commit 43f1d59e17d89d19b322d639c5069a3fc0c8e2ed)
+---
+ .../main/scala/org/apache/spark/SSLOptions.scala   |   50 +++++++-
+ .../scala/org/apache/spark/SecurityManager.scala   |   16 +--
+ .../org/apache/spark/deploy/DeployMessage.scala    |    3 +-
+ .../spark/deploy/history/HistoryServer.scala       |    5 +-
+ .../org/apache/spark/deploy/master/Master.scala    |    4 +-
+ .../apache/spark/deploy/master/WorkerInfo.scala    |    7 +-
+ .../spark/deploy/master/ui/MasterWebUI.scala       |    4 +-
+ .../spark/deploy/mesos/ui/MesosClusterUI.scala     |    2 +-
+ .../org/apache/spark/deploy/worker/Worker.scala    |    6 +-
+ .../spark/deploy/worker/ui/WorkerWebUI.scala       |    3 +-
+ .../scala/org/apache/spark/ui/JettyUtils.scala     |   79 +++++++++++-
+ .../main/scala/org/apache/spark/ui/SparkUI.scala   |    3 +-
+ .../src/main/scala/org/apache/spark/ui/WebUI.scala |    5 +-
+ .../scala/org/apache/spark/util/AkkaUtils.scala    |    2 +-
+ core/src/test/resources/spark.keystore             |  Bin 0 -> 1383 bytes
+ .../org/apache/spark/SecurityManagerSuite.scala    |   22 ++--
+ .../org/apache/spark/deploy/DeployTestUtils.scala  |    2 +-
+ .../apache/spark/deploy/master/MasterSuite.scala   |    5 +-
+ .../deploy/master/PersistenceEngineSuite.scala     |    7 +-
+ .../test/scala/org/apache/spark/ui/UISuite.scala   |  135 ++++++++++++++++----
+ docs/configuration.md                              |   22 ++++
+ docs/security.md                                   |   49 ++++++-
+ 22 files changed, 338 insertions(+), 93 deletions(-)
+ create mode 100644 core/src/test/resources/spark.keystore
+
+diff --git a/core/src/main/scala/org/apache/spark/SSLOptions.scala b/core/src/main/scala/org/apache/spark/SSLOptions.scala
+index 3b9c885..261265f 100644
+--- a/core/src/main/scala/org/apache/spark/SSLOptions.scala
++++ b/core/src/main/scala/org/apache/spark/SSLOptions.scala
+@@ -39,8 +39,11 @@ import org.eclipse.jetty.util.ssl.SslContextFactory
+  * @param keyStore            a path to the key-store file
+  * @param keyStorePassword    a password to access the key-store file
+  * @param keyPassword         a password to access the private key in the key-store
++ * @param keyStoreType        the type of the key-store
++ * @param needClientAuth      set true if SSL needs client authentication
+  * @param trustStore          a path to the trust-store file
+  * @param trustStorePassword  a password to access the trust-store file
++ * @param trustStoreType      the type of the trust-store
+  * @param protocol            SSL protocol (remember that SSLv3 was compromised) supported by Java
+  * @param enabledAlgorithms   a set of encryption algorithms that may be used
+  */
+@@ -49,8 +52,11 @@ private[spark] case class SSLOptions(
+     keyStore: Option[File] = None,
+     keyStorePassword: Option[String] = None,
+     keyPassword: Option[String] = None,
++    keyStoreType: Option[String] = None,
++    needClientAuth: Boolean = false,
+     trustStore: Option[File] = None,
+     trustStorePassword: Option[String] = None,
++    trustStoreType: Option[String] = None,
+     protocol: Option[String] = None,
+     enabledAlgorithms: Set[String] = Set.empty)
+     extends Logging {
+@@ -63,12 +69,18 @@ private[spark] case class SSLOptions(
+       val sslContextFactory = new SslContextFactory()
+ 
+       keyStore.foreach(file => sslContextFactory.setKeyStorePath(file.getAbsolutePath))
+-      trustStore.foreach(file => sslContextFactory.setTrustStore(file.getAbsolutePath))
+       keyStorePassword.foreach(sslContextFactory.setKeyStorePassword)
+-      trustStorePassword.foreach(sslContextFactory.setTrustStorePassword)
+       keyPassword.foreach(sslContextFactory.setKeyManagerPassword)
++      keyStoreType.foreach(sslContextFactory.setKeyStoreType)
++      if (needClientAuth) {
++        trustStore.foreach(file => sslContextFactory.setTrustStore(file.getAbsolutePath))
++        trustStorePassword.foreach(sslContextFactory.setTrustStorePassword)
++        trustStoreType.foreach(sslContextFactory.setTrustStoreType)
++      }
+       protocol.foreach(sslContextFactory.setProtocol)
+-      sslContextFactory.setIncludeCipherSuites(supportedAlgorithms.toSeq: _*)
++      if (supportedAlgorithms.nonEmpty) {
++        sslContextFactory.setIncludeCipherSuites(supportedAlgorithms.toSeq: _*)
++      }
+ 
+       Some(sslContextFactory)
+     } else {
+@@ -82,6 +94,13 @@ private[spark] case class SSLOptions(
+    */
+   def createAkkaConfig: Option[Config] = {
+     if (enabled) {
++      if (keyStoreType.isDefined) {
++        logWarning("Akka configuration does not support key store type.");
++      }
++      if (trustStoreType.isDefined) {
++        logWarning("Akka configuration does not support trust store type.");
++      }
++
+       Some(ConfigFactory.empty()
+         .withValue("akka.remote.netty.tcp.security.key-store",
+           ConfigValueFactory.fromAnyRef(keyStore.map(_.getAbsolutePath).getOrElse("")))
+@@ -110,7 +129,9 @@ private[spark] case class SSLOptions(
+    * The supportedAlgorithms set is a subset of the enabledAlgorithms that
+    * are supported by the current Java security provider for this protocol.
+    */
+-  private val supportedAlgorithms: Set[String] = {
++  private val supportedAlgorithms: Set[String] = if (enabledAlgorithms.isEmpty) {
++    Set()
++  } else {
+     var context: SSLContext = null
+     try {
+       context = SSLContext.getInstance(protocol.orNull)
+@@ -133,7 +154,11 @@ private[spark] case class SSLOptions(
+       logDebug(s"Discarding unsupported cipher $cipher")
+     }
+ 
+-    enabledAlgorithms & providerAlgorithms
++    val supported = enabledAlgorithms & providerAlgorithms
++    require(supported.nonEmpty || sys.env.contains("SPARK_TESTING"),
++      "SSLContext does not support any of the enabled algorithms: " +
++        enabledAlgorithms.mkString(","))
++    supported
+   }
+ 
+   /** Returns a string representation of this SSLOptions with all the passwords masked. */
+@@ -153,9 +178,12 @@ private[spark] object SSLOptions extends Logging {
+     * $ - `[ns].keyStore` - a path to the key-store file; can be relative to the current directory
+     * $ - `[ns].keyStorePassword` - a password to the key-store file
+     * $ - `[ns].keyPassword` - a password to the private key
++    * $ - `[ns].keyStoreType` - the type of the key-store
++    * $ - `[ns].needClientAuth` - whether SSL needs client authentication
+     * $ - `[ns].trustStore` - a path to the trust-store file; can be relative to the current
+     *                         directory
+     * $ - `[ns].trustStorePassword` - a password to the trust-store file
++    * $ - `[ns].trustStoreType` - the type of trust-store
+     * $ - `[ns].protocol` - a protocol name supported by a particular Java version
+     * $ - `[ns].enabledAlgorithms` - a comma separated list of ciphers
+     *
+@@ -183,12 +211,21 @@ private[spark] object SSLOptions extends Logging {
+     val keyPassword = conf.getOption(s"$ns.keyPassword")
+         .orElse(defaults.flatMap(_.keyPassword))
+ 
++    val keyStoreType = conf.getOption(s"$ns.keyStoreType")
++        .orElse(defaults.flatMap(_.keyStoreType))
++
++    val needClientAuth =
++      conf.getBoolean(s"$ns.needClientAuth", defaultValue = defaults.exists(_.needClientAuth))
++
+     val trustStore = conf.getOption(s"$ns.trustStore").map(new File(_))
+         .orElse(defaults.flatMap(_.trustStore))
+ 
+     val trustStorePassword = conf.getOption(s"$ns.trustStorePassword")
+         .orElse(defaults.flatMap(_.trustStorePassword))
+ 
++    val trustStoreType = conf.getOption(s"$ns.trustStoreType")
++        .orElse(defaults.flatMap(_.trustStoreType))
++
+     val protocol = conf.getOption(s"$ns.protocol")
+         .orElse(defaults.flatMap(_.protocol))
+ 
+@@ -202,8 +239,11 @@ private[spark] object SSLOptions extends Logging {
+       keyStore,
+       keyStorePassword,
+       keyPassword,
++      keyStoreType,
++      needClientAuth,
+       trustStore,
+       trustStorePassword,
++      trustStoreType,
+       protocol,
+       enabledAlgorithms)
+   }
+diff --git a/core/src/main/scala/org/apache/spark/SecurityManager.scala b/core/src/main/scala/org/apache/spark/SecurityManager.scala
+index 64e483e..c5aec05 100644
+--- a/core/src/main/scala/org/apache/spark/SecurityManager.scala
++++ b/core/src/main/scala/org/apache/spark/SecurityManager.scala
+@@ -244,14 +244,8 @@ private[spark] class SecurityManager(sparkConf: SparkConf)
+   // the default SSL configuration - it will be used by all communication layers unless overwritten
+   private val defaultSSLOptions = SSLOptions.parse(sparkConf, "spark.ssl", defaults = None)
+ 
+-  // SSL configuration for different communication layers - they can override the default
+-  // configuration at a specified namespace. The namespace *must* start with spark.ssl.
+-  val fileServerSSLOptions = SSLOptions.parse(sparkConf, "spark.ssl.fs", Some(defaultSSLOptions))
+-  val akkaSSLOptions = SSLOptions.parse(sparkConf, "spark.ssl.akka", Some(defaultSSLOptions))
+-
+-  logDebug(s"SSLConfiguration for file server: $fileServerSSLOptions")
+-  logDebug(s"SSLConfiguration for Akka: $akkaSSLOptions")
+-
++  // SSL configuration for the file server. This is used by Utils.setupSecureURLConnection().
++  val fileServerSSLOptions = getSSLOptions("fs")
+   val (sslSocketFactory, hostnameVerifier) = if (fileServerSSLOptions.enabled) {
+     val trustStoreManagers =
+       for (trustStore <- fileServerSSLOptions.trustStore) yield {
+@@ -292,6 +286,12 @@ private[spark] class SecurityManager(sparkConf: SparkConf)
+     (None, None)
+   }
+ 
++  def getSSLOptions(module: String): SSLOptions = {
++    val opts = SSLOptions.parse(sparkConf, s"spark.ssl.$module", Some(defaultSSLOptions))
++    logDebug(s"Created SSL options for $module: $opts")
++    opts
++  }
++
+   /**
+    * Split a comma separated String, filter out any empty items, and return a Set of strings
+    */
+diff --git a/core/src/main/scala/org/apache/spark/deploy/DeployMessage.scala b/core/src/main/scala/org/apache/spark/deploy/DeployMessage.scala
+index 3feb7ce..3e78c7a 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/DeployMessage.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/DeployMessage.scala
+@@ -41,8 +41,7 @@ private[deploy] object DeployMessages {
+       worker: RpcEndpointRef,
+       cores: Int,
+       memory: Int,
+-      webUiPort: Int,
+-      publicAddress: String)
++      workerWebUiUrl: String)
+     extends DeployMessage {
+     Utils.checkHost(host, "Required hostname")
+     assert (port > 0)
+diff --git a/core/src/main/scala/org/apache/spark/deploy/history/HistoryServer.scala b/core/src/main/scala/org/apache/spark/deploy/history/HistoryServer.scala
+index f31fef0..933ea2e 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/history/HistoryServer.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/history/HistoryServer.scala
+@@ -48,7 +48,8 @@ class HistoryServer(
+     provider: ApplicationHistoryProvider,
+     securityManager: SecurityManager,
+     port: Int)
+-  extends WebUI(securityManager, port, conf) with Logging with UIRoot {
++  extends WebUI(securityManager, securityManager.getSSLOptions("historyServer"), port, conf)
++  with Logging with UIRoot {
+ 
+   // How many applications to retain
+   private val retainedApplications = conf.getInt("spark.history.retainedApplications", 50)
+@@ -222,7 +223,7 @@ object HistoryServer extends Logging {
+ 
+   val UI_PATH_PREFIX = "/history"
+ 
+-  def main(argStrings: Array[String]) {
++  def main(argStrings: Array[String]): Unit = {
+     SignalLogger.register(log)
+     new HistoryServerArguments(conf, argStrings)
+     initSecurity()
+diff --git a/core/src/main/scala/org/apache/spark/deploy/master/Master.scala b/core/src/main/scala/org/apache/spark/deploy/master/Master.scala
+index 5d97c63..40f1df1 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/master/Master.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/master/Master.scala
+@@ -383,7 +383,7 @@ private[deploy] class Master(
+ 
+   override def receiveAndReply(context: RpcCallContext): PartialFunction[Any, Unit] = {
+     case RegisterWorker(
+-        id, workerHost, workerPort, workerRef, cores, memory, workerUiPort, publicAddress) => {
++        id, workerHost, workerPort, workerRef, cores, memory, workerWebUiUrl) => {
+       logInfo("Registering worker %s:%d with %d cores, %s RAM".format(
+         workerHost, workerPort, cores, Utils.megabytesToString(memory)))
+       if (state == RecoveryState.STANDBY) {
+@@ -392,7 +392,7 @@ private[deploy] class Master(
+         context.reply(RegisterWorkerFailed("Duplicate worker ID"))
+       } else {
+         val worker = new WorkerInfo(id, workerHost, workerPort, cores, memory,
+-          workerRef, workerUiPort, publicAddress)
++          workerRef, workerWebUiUrl)
+         if (registerWorker(worker)) {
+           persistenceEngine.addWorker(worker)
+           context.reply(RegisteredWorker(self, masterWebUiUrl))
+diff --git a/core/src/main/scala/org/apache/spark/deploy/master/WorkerInfo.scala b/core/src/main/scala/org/apache/spark/deploy/master/WorkerInfo.scala
+index f751966..4e20c10 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/master/WorkerInfo.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/master/WorkerInfo.scala
+@@ -29,8 +29,7 @@ private[spark] class WorkerInfo(
+     val cores: Int,
+     val memory: Int,
+     val endpoint: RpcEndpointRef,
+-    val webUiPort: Int,
+-    val publicAddress: String)
++    val webUiAddress: String)
+   extends Serializable {
+ 
+   Utils.checkHost(host, "Expected hostname")
+@@ -98,10 +97,6 @@ private[spark] class WorkerInfo(
+     coresUsed -= driver.desc.cores
+   }
+ 
+-  def webUiAddress : String = {
+-    "http://" + this.publicAddress + ":" + this.webUiPort
+-  }
+-
+   def setState(state: WorkerState.Value): Unit = {
+     this.state = state
+   }
+diff --git a/core/src/main/scala/org/apache/spark/deploy/master/ui/MasterWebUI.scala b/core/src/main/scala/org/apache/spark/deploy/master/ui/MasterWebUI.scala
+index e41554a..63b4e37 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/master/ui/MasterWebUI.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/master/ui/MasterWebUI.scala
+@@ -32,8 +32,8 @@ class MasterWebUI(
+     val master: Master,
+     requestedPort: Int,
+     customMasterPage: Option[MasterPage] = None)
+-  extends WebUI(master.securityMgr, requestedPort, master.conf, name = "MasterUI") with Logging
+-  with UIRoot {
++  extends WebUI(master.securityMgr, master.securityMgr.getSSLOptions("standalone"),
++    requestedPort, master.conf, name = "MasterUI") with Logging with UIRoot {
+ 
+   val masterEndpointRef = master.self
+   val killEnabled = master.conf.getBoolean("spark.ui.killEnabled", true)
+diff --git a/core/src/main/scala/org/apache/spark/deploy/mesos/ui/MesosClusterUI.scala b/core/src/main/scala/org/apache/spark/deploy/mesos/ui/MesosClusterUI.scala
+index 3f69354..d9a8b1b 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/mesos/ui/MesosClusterUI.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/mesos/ui/MesosClusterUI.scala
+@@ -31,7 +31,7 @@ private[spark] class MesosClusterUI(
+     conf: SparkConf,
+     dispatcherPublicAddress: String,
+     val scheduler: MesosClusterScheduler)
+-  extends WebUI(securityManager, port, conf) {
++  extends WebUI(securityManager, securityManager.getSSLOptions("mesos"), port, conf) {
+ 
+   initialize()
+ 
+diff --git a/core/src/main/scala/org/apache/spark/deploy/worker/Worker.scala b/core/src/main/scala/org/apache/spark/deploy/worker/Worker.scala
+index f41efb0..0162126 100755
+--- a/core/src/main/scala/org/apache/spark/deploy/worker/Worker.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/worker/Worker.scala
+@@ -102,6 +102,7 @@ private[deploy] class Worker(
+   private var activeMasterUrl: String = ""
+   private[worker] var activeMasterWebUiUrl : String = ""
+   private val workerUri = rpcEnv.uriOf(systemName, rpcEnv.address, endpointName)
++  private var workerWebUiUrl: String = ""
+   private var registered = false
+   private var connected = false
+   private val workerId = generateWorkerId()
+@@ -185,6 +186,9 @@ private[deploy] class Worker(
+     shuffleService.startIfEnabled()
+     webUi = new WorkerWebUI(this, workDir, webUiPort)
+     webUi.bind()
++
++    val scheme = if (webUi.sslOptions.enabled) "https" else "http"
++    workerWebUiUrl = s"$scheme://$publicAddress:${webUi.boundPort}"
+     registerWithMaster()
+ 
+     metricsSystem.registerSource(workerSource)
+@@ -339,7 +343,7 @@ private[deploy] class Worker(
+ 
+   private def registerWithMaster(masterEndpoint: RpcEndpointRef): Unit = {
+     masterEndpoint.ask[RegisterWorkerResponse](RegisterWorker(
+-      workerId, host, port, self, cores, memory, webUi.boundPort, publicAddress))
++      workerId, host, port, self, cores, memory, workerWebUiUrl))
+       .onComplete {
+         // This is a very fast action so we can use "ThreadUtils.sameThread"
+         case Success(msg) =>
+diff --git a/core/src/main/scala/org/apache/spark/deploy/worker/ui/WorkerWebUI.scala b/core/src/main/scala/org/apache/spark/deploy/worker/ui/WorkerWebUI.scala
+index 1a0598e..b45b682 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/worker/ui/WorkerWebUI.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/worker/ui/WorkerWebUI.scala
+@@ -34,7 +34,8 @@ class WorkerWebUI(
+     val worker: Worker,
+     val workDir: File,
+     requestedPort: Int)
+-  extends WebUI(worker.securityMgr, requestedPort, worker.conf, name = "WorkerUI")
++  extends WebUI(worker.securityMgr, worker.securityMgr.getSSLOptions("standalone"),
++    requestedPort, worker.conf, name = "WorkerUI")
+   with Logging {
+ 
+   private[ui] val timeout = RpcUtils.askRpcTimeout(worker.conf)
+diff --git a/core/src/main/scala/org/apache/spark/ui/JettyUtils.scala b/core/src/main/scala/org/apache/spark/ui/JettyUtils.scala
+index b796a44..bc143b7 100644
+--- a/core/src/main/scala/org/apache/spark/ui/JettyUtils.scala
++++ b/core/src/main/scala/org/apache/spark/ui/JettyUtils.scala
+@@ -17,21 +17,24 @@
+ 
+ package org.apache.spark.ui
+ 
+-import java.net.{InetSocketAddress, URL}
++import java.net.{URI, URL}
+ import javax.servlet.DispatcherType
+ import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
+ 
++import scala.collection.mutable.{ArrayBuffer, StringBuilder}
+ import scala.language.implicitConversions
+ import scala.xml.Node
+ 
+-import org.eclipse.jetty.server.Server
++import org.eclipse.jetty.server.{Connector, Request, Server}
+ import org.eclipse.jetty.server.handler._
++import org.eclipse.jetty.server.nio.SelectChannelConnector
++import org.eclipse.jetty.server.ssl.SslSelectChannelConnector
+ import org.eclipse.jetty.servlet._
+ import org.eclipse.jetty.util.thread.QueuedThreadPool
+ import org.json4s.JValue
+ import org.json4s.jackson.JsonMethods.{pretty, render}
+ 
+-import org.apache.spark.{Logging, SecurityManager, SparkConf}
++import org.apache.spark.{Logging, SecurityManager, SparkConf, SSLOptions}
+ import org.apache.spark.util.Utils
+ 
+ /**
+@@ -224,23 +227,51 @@ private[spark] object JettyUtils extends Logging {
+   def startJettyServer(
+       hostName: String,
+       port: Int,
++      sslOptions: SSLOptions,
+       handlers: Seq[ServletContextHandler],
+       conf: SparkConf,
+       serverName: String = ""): ServerInfo = {
+ 
++    val collection = new ContextHandlerCollection
+     addFilters(handlers, conf)
+ 
+-    val collection = new ContextHandlerCollection
+     val gzipHandlers = handlers.map { h =>
+       val gzipHandler = new GzipHandler
+       gzipHandler.setHandler(h)
+       gzipHandler
+     }
+-    collection.setHandlers(gzipHandlers.toArray)
+ 
+     // Bind to the given port, or throw a java.net.BindException if the port is occupied
+     def connect(currentPort: Int): (Server, Int) = {
+-      val server = new Server(new InetSocketAddress(hostName, currentPort))
++      val server = new Server
++      val connectors = new ArrayBuffer[Connector]
++      // Create a connector on port currentPort to listen for HTTP requests
++      val httpConnector = new SelectChannelConnector()
++      httpConnector.setPort(currentPort)
++      connectors += httpConnector
++
++      sslOptions.createJettySslContextFactory().foreach { factory =>
++        // If the new port wraps around, do not try a privileged port.
++        val securePort =
++          if (currentPort != 0) {
++            (currentPort + 400 - 1024) % (65536 - 1024) + 1024
++          } else {
++            0
++          }
++        val scheme = "https"
++        // Create a connector on port securePort to listen for HTTPS requests
++        val connector = new SslSelectChannelConnector(factory)
++        connector.setPort(securePort)
++        connectors += connector
++
++        // redirect the HTTP requests to HTTPS port
++        collection.addHandler(createRedirectHttpsHandler(securePort, scheme))
++      }
++
++      gzipHandlers.foreach(collection.addHandler)
++      connectors.foreach(_.setHost(hostName))
++      server.setConnectors(connectors.toArray)
++
+       val pool = new QueuedThreadPool
+       pool.setDaemon(true)
+       server.setThreadPool(pool)
+@@ -262,6 +293,42 @@ private[spark] object JettyUtils extends Logging {
+     val (server, boundPort) = Utils.startServiceOnPort[Server](port, connect, conf, serverName)
+     ServerInfo(server, boundPort, collection)
+   }
++
++  private def createRedirectHttpsHandler(securePort: Int, scheme: String): ContextHandler = {
++    val redirectHandler: ContextHandler = new ContextHandler
++    redirectHandler.setContextPath("/")
++    redirectHandler.setHandler(new AbstractHandler {
++      override def handle(
++          target: String,
++          baseRequest: Request,
++          request: HttpServletRequest,
++          response: HttpServletResponse): Unit = {
++        if (baseRequest.isSecure) {
++          return
++        }
++        val httpsURI = createRedirectURI(scheme, baseRequest.getServerName, securePort,
++          baseRequest.getRequestURI, baseRequest.getQueryString)
++        response.setContentLength(0)
++        response.encodeRedirectURL(httpsURI)
++        response.sendRedirect(httpsURI)
++        baseRequest.setHandled(true)
++      }
++    })
++    redirectHandler
++  }
++
++  // Create a new URI from the arguments, handling IPv6 host encoding and default ports.
++  private def createRedirectURI(
++      scheme: String, server: String, port: Int, path: String, query: String) = {
++    val redirectServer = if (server.contains(":") && !server.startsWith("[")) {
++      s"[${server}]"
++    } else {
++      server
++    }
++    val authority = s"$redirectServer:$port"
++    new URI(scheme, authority, path, query, null).toString
++  }
++
+ }
+ 
+ private[spark] case class ServerInfo(
+diff --git a/core/src/main/scala/org/apache/spark/ui/SparkUI.scala b/core/src/main/scala/org/apache/spark/ui/SparkUI.scala
+index 4608bce..853b446 100644
+--- a/core/src/main/scala/org/apache/spark/ui/SparkUI.scala
++++ b/core/src/main/scala/org/apache/spark/ui/SparkUI.scala
+@@ -47,7 +47,8 @@ private[spark] class SparkUI private (
+     var appName: String,
+     val basePath: String,
+     val startTime: Long)
+-  extends WebUI(securityManager, SparkUI.getUIPort(conf), conf, basePath, "SparkUI")
++  extends WebUI(securityManager, securityManager.getSSLOptions("ui"), SparkUI.getUIPort(conf),
++    conf, basePath, "SparkUI")
+   with Logging
+   with UIRoot {
+ 
+diff --git a/core/src/main/scala/org/apache/spark/ui/WebUI.scala b/core/src/main/scala/org/apache/spark/ui/WebUI.scala
+index 81a121f..fe4949b 100644
+--- a/core/src/main/scala/org/apache/spark/ui/WebUI.scala
++++ b/core/src/main/scala/org/apache/spark/ui/WebUI.scala
+@@ -26,9 +26,9 @@ import scala.xml.Node
+ import org.eclipse.jetty.servlet.ServletContextHandler
+ import org.json4s.JsonAST.{JNothing, JValue}
+ 
++import org.apache.spark.{Logging, SecurityManager, SparkConf, SSLOptions}
+ import org.apache.spark.ui.JettyUtils._
+ import org.apache.spark.util.Utils
+-import org.apache.spark.{Logging, SecurityManager, SparkConf}
+ 
+ /**
+  * The top level component of the UI hierarchy that contains the server.
+@@ -38,6 +38,7 @@ import org.apache.spark.{Logging, SecurityManager, SparkConf}
+  */
+ private[spark] abstract class WebUI(
+     val securityManager: SecurityManager,
++    val sslOptions: SSLOptions,
+     port: Int,
+     conf: SparkConf,
+     basePath: String = "",
+@@ -133,7 +134,7 @@ private[spark] abstract class WebUI(
+   def bind() {
+     assert(!serverInfo.isDefined, "Attempted to bind %s more than once!".format(className))
+     try {
+-      serverInfo = Some(startJettyServer("0.0.0.0", port, handlers, conf, name))
++      serverInfo = Some(startJettyServer("0.0.0.0", port, sslOptions, handlers, conf, name))
+       logInfo("Started %s at http://%s:%d".format(className, publicHostName, boundPort))
+     } catch {
+       case e: Exception =>
+diff --git a/core/src/main/scala/org/apache/spark/util/AkkaUtils.scala b/core/src/main/scala/org/apache/spark/util/AkkaUtils.scala
+index 1738258..408b73b 100644
+--- a/core/src/main/scala/org/apache/spark/util/AkkaUtils.scala
++++ b/core/src/main/scala/org/apache/spark/util/AkkaUtils.scala
+@@ -89,7 +89,7 @@ private[spark] object AkkaUtils extends Logging {
+     val secureCookie = if (isAuthOn) secretKey else ""
+     logDebug(s"In createActorSystem, requireCookie is: $requireCookie")
+ 
+-    val akkaSslConfig = securityManager.akkaSSLOptions.createAkkaConfig
++    val akkaSslConfig = securityManager.getSSLOptions("akka").createAkkaConfig
+         .getOrElse(ConfigFactory.empty())
+ 
+     val akkaConf = ConfigFactory.parseMap(conf.getAkkaConf.toMap.asJava)
+diff --git a/core/src/test/resources/spark.keystore b/core/src/test/resources/spark.keystore
+new file mode 100644
+index 0000000000000000000000000000000000000000..f30716b57b30298e78e85011d7595bb42d6a85d7
+GIT binary patch
+literal 1383
+zcmezO_TO6u1_mY|W&~sI#Dc`+jMU<S#G-7VnERcHmtuhOyA7I{wj1!VacQ$LvM_2f
+z2{JOWGO#o;EiTcRuAkP^YhtQky{W-TVz2wU&~wX`HazjqT~_i|CTgDlg&Wx$w3)Tr
+zszR@tuIEmi%KW_7@2$<ZSeGKjMUv(JuFUx0?D5gvVS!vcr*{3}t<S=ESIORgqQuiB
+zx3Z!*UDcjbwRy(+884U52<_mpT)6+w^nadtAJyb8PIFdd?&0)ubY8E*B`1E>;q4hU
+zrO=-|ukKbAC9>v6Xj~6^dGz-;rEIy-hpu9VYZQKRFxV<jm;1n;apBl=zhmD&?hC5A
+zs538f_9dZ(FSowhb8nT4`-vP!wf0JB<+jf}S|Xd?x$j`rK5TgQmrrKc&1UVi)MdSw
+zwqAY{m63Be=6u~6p92ry?ianluJCxy<yfVgC8zGQm<60zf6ltBK<CSvS|jm?{x7WD
+zU!K}*o4@$Bn|to9KW&HS=RUZzF!8+bJG(>T-dox2Ha~PrWerl|?>*gSJ~<=YJoCs7
+z*}f&=)m!s=l$QKIcjfZVg^^3XXEFT`vO68ixrQZv8(+};usDIh+i!Q@T=VR`^89pT
+z6UnxZD<ZcPEdQ3i@)5_G*o!I*Q#HjVcOKK-^WfSYt<C$?#B5~$h*z)V`g4BO{I=z_
+zXU|%6ZP-vc%|t@JtJAr!`i!vt>&GWt=NYjq{y2LTm;dYUELm3^{5SfoauvOH{%7jM
+zPd9ov=e?iU^JzzTZ}X+bIj3AJ&nEJhmq@bQG`idUM*r_}6^5YVRe!GJFIIo??*6>C
+z7vIbpE||~zQ!sDui>F(=K72@uKDoT)BuD=)FFucpI|Dxnt`Wa(wwCK?M(X@4_g0qv
+ztpD_f>7yp2OTnRV-yp{hjyJClXHNV+>q73A6Efx(7W|w4hRtoVLjNK5_p&_tOri@G
+z{Lh`aywmi#B-gd1RwMiDXR`Sds`^gv$v>tTp*Z=;ypD7=&V}2nyWfYn94Z5+Yt{%o
+zQv*w2N=^W#<QRh{#-j_EnHZUvSTYM+qzri3IJMe5+P?ELGIFyr7$g|-8St<%hqAB<
+zvx0L1jL(6_XGi06q4BxV_{>ngfr2=%p^1Top_ze^fw_@olmx$#AyB~F$QUX>2RAg%
+zNA@=`KQlM>G8i;=GBq|b>|Y()b*zay^1{UnwF`D`zQs^EAxidc%t<!$h-66zAs3Bb
+z9D?Uo?J`-^^eN!6>7#mf$4xWh?;QP`aNzKxWvBigJX3kB%Cn;TgK>#Ki-+Ei<q^z>
+zc;e5llU;DN!SO-MqGZpx%c~L(NKLurv%1*WaJBx7*DqEbh)WH4UC(G58aeeo6Eh<N
+z<6=bvc>`HsJjn8~h_Q&2Yt_uD=KU+=u`I5WC28qf3udlRWFG)yjv46m)qD=0ESebC
+ziYo0X-*0sLL%{Uzrn!0-|1q(j+ZbcPrTDqLXr@NmG%jVavp<<H7k%>7ao@I!_uIxq
+zi}0s+x-40>E*VS9-92;o$X37h9T#V&HuGLNv9?}$<0-YDvbCT06;8F*j&j~ua5_~f
+w#jTO2x_9%}r!KmNKLjS12(B>byIgicKkS7jrwSLx5-rOqYs=I>YaZYR0Q-$KZvX%Q
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/src/test/scala/org/apache/spark/SecurityManagerSuite.scala b/core/src/test/scala/org/apache/spark/SecurityManagerSuite.scala
+index 26b95c0..2150a61 100644
+--- a/core/src/test/scala/org/apache/spark/SecurityManagerSuite.scala
++++ b/core/src/test/scala/org/apache/spark/SecurityManagerSuite.scala
+@@ -181,9 +181,10 @@ class SecurityManagerSuite extends SparkFunSuite {
+     "SSL_DHE_RSA_WITH_AES_128_CBC_SHA256")
+ 
+     val securityManager = new SecurityManager(conf)
++    val akkaSSLOptions = securityManager.getSSLOptions("akka")
+ 
+     assert(securityManager.fileServerSSLOptions.enabled === true)
+-    assert(securityManager.akkaSSLOptions.enabled === true)
++    assert(akkaSSLOptions.enabled === true)
+ 
+     assert(securityManager.sslSocketFactory.isDefined === true)
+     assert(securityManager.hostnameVerifier.isDefined === true)
+@@ -198,15 +199,15 @@ class SecurityManagerSuite extends SparkFunSuite {
+     assert(securityManager.fileServerSSLOptions.protocol === Some("TLSv1.2"))
+     assert(securityManager.fileServerSSLOptions.enabledAlgorithms === expectedAlgorithms)
+ 
+-    assert(securityManager.akkaSSLOptions.trustStore.isDefined === true)
+-    assert(securityManager.akkaSSLOptions.trustStore.get.getName === "truststore")
+-    assert(securityManager.akkaSSLOptions.keyStore.isDefined === true)
+-    assert(securityManager.akkaSSLOptions.keyStore.get.getName === "keystore")
+-    assert(securityManager.akkaSSLOptions.trustStorePassword === Some("password"))
+-    assert(securityManager.akkaSSLOptions.keyStorePassword === Some("password"))
+-    assert(securityManager.akkaSSLOptions.keyPassword === Some("password"))
+-    assert(securityManager.akkaSSLOptions.protocol === Some("TLSv1.2"))
+-    assert(securityManager.akkaSSLOptions.enabledAlgorithms === expectedAlgorithms)
++    assert(akkaSSLOptions.trustStore.isDefined === true)
++    assert(akkaSSLOptions.trustStore.get.getName === "truststore")
++    assert(akkaSSLOptions.keyStore.isDefined === true)
++    assert(akkaSSLOptions.keyStore.get.getName === "keystore")
++    assert(akkaSSLOptions.trustStorePassword === Some("password"))
++    assert(akkaSSLOptions.keyStorePassword === Some("password"))
++    assert(akkaSSLOptions.keyPassword === Some("password"))
++    assert(akkaSSLOptions.protocol === Some("TLSv1.2"))
++    assert(akkaSSLOptions.enabledAlgorithms === expectedAlgorithms)
+   }
+ 
+   test("ssl off setup") {
+@@ -218,7 +219,6 @@ class SecurityManagerSuite extends SparkFunSuite {
+     val securityManager = new SecurityManager(conf)
+ 
+     assert(securityManager.fileServerSSLOptions.enabled === false)
+-    assert(securityManager.akkaSSLOptions.enabled === false)
+     assert(securityManager.sslSocketFactory.isDefined === false)
+     assert(securityManager.hostnameVerifier.isDefined === false)
+   }
+diff --git a/core/src/test/scala/org/apache/spark/deploy/DeployTestUtils.scala b/core/src/test/scala/org/apache/spark/deploy/DeployTestUtils.scala
+index 3164760..d76ff6f 100644
+--- a/core/src/test/scala/org/apache/spark/deploy/DeployTestUtils.scala
++++ b/core/src/test/scala/org/apache/spark/deploy/DeployTestUtils.scala
+@@ -50,7 +50,7 @@ private[deploy] object DeployTestUtils {
+     createDriverDesc(), new Date())
+ 
+   def createWorkerInfo(): WorkerInfo = {
+-    val workerInfo = new WorkerInfo("id", "host", 8080, 4, 1234, null, 80, "publicAddress")
++    val workerInfo = new WorkerInfo("id", "host", 8080, 4, 1234, null, "http://publicAddress:80")
+     workerInfo.lastHeartbeat = JsonConstants.currTimeInMillis
+     workerInfo
+   }
+diff --git a/core/src/test/scala/org/apache/spark/deploy/master/MasterSuite.scala b/core/src/test/scala/org/apache/spark/deploy/master/MasterSuite.scala
+index db64075..445ff1e 100644
+--- a/core/src/test/scala/org/apache/spark/deploy/master/MasterSuite.scala
++++ b/core/src/test/scala/org/apache/spark/deploy/master/MasterSuite.scala
+@@ -90,8 +90,7 @@ class MasterSuite extends SparkFunSuite with Matchers with Eventually with Priva
+       cores = 0,
+       memory = 0,
+       endpoint = null,
+-      webUiPort = 0,
+-      publicAddress = ""
++      webUiAddress = "http://localhost:80"
+     )
+ 
+     val (rpcEnv, _, _) =
+@@ -376,7 +375,7 @@ class MasterSuite extends SparkFunSuite with Matchers with Eventually with Priva
+ 
+   private def makeWorkerInfo(memoryMb: Int, cores: Int): WorkerInfo = {
+     val workerId = System.currentTimeMillis.toString
+-    new WorkerInfo(workerId, "host", 100, cores, memoryMb, null, 101, "address")
++    new WorkerInfo(workerId, "host", 100, cores, memoryMb, null, "http://localhost:80")
+   }
+ 
+   private def scheduleExecutorsOnWorkers(
+diff --git a/core/src/test/scala/org/apache/spark/deploy/master/PersistenceEngineSuite.scala b/core/src/test/scala/org/apache/spark/deploy/master/PersistenceEngineSuite.scala
+index 7a44728..f0a7150 100644
+--- a/core/src/test/scala/org/apache/spark/deploy/master/PersistenceEngineSuite.scala
++++ b/core/src/test/scala/org/apache/spark/deploy/master/PersistenceEngineSuite.scala
+@@ -88,9 +88,7 @@ class PersistenceEngineSuite extends SparkFunSuite {
+           cores = 0,
+           memory = 0,
+           endpoint = workerEndpoint,
+-          webUiPort = 0,
+-          publicAddress = ""
+-        )
++          webUiAddress = "http://localhost:80")
+ 
+         persistenceEngine.addWorker(workerToPersist)
+ 
+@@ -109,8 +107,7 @@ class PersistenceEngineSuite extends SparkFunSuite {
+         assert(workerToPersist.cores === recoveryWorkerInfo.cores)
+         assert(workerToPersist.memory === recoveryWorkerInfo.memory)
+         assert(workerToPersist.endpoint === recoveryWorkerInfo.endpoint)
+-        assert(workerToPersist.webUiPort === recoveryWorkerInfo.webUiPort)
+-        assert(workerToPersist.publicAddress === recoveryWorkerInfo.publicAddress)
++        assert(workerToPersist.webUiAddress === recoveryWorkerInfo.webUiAddress)
+       } finally {
+         testRpcEnv.shutdown()
+         testRpcEnv.awaitTermination()
+diff --git a/core/src/test/scala/org/apache/spark/ui/UISuite.scala b/core/src/test/scala/org/apache/spark/ui/UISuite.scala
+index 8f9502b..69c4605 100644
+--- a/core/src/test/scala/org/apache/spark/ui/UISuite.scala
++++ b/core/src/test/scala/org/apache/spark/ui/UISuite.scala
+@@ -17,17 +17,17 @@
+ 
+ package org.apache.spark.ui
+ 
+-import java.net.ServerSocket
++import java.net.{BindException, ServerSocket}
+ 
+ import scala.io.Source
+-import scala.util.{Failure, Success, Try}
+ 
++import org.eclipse.jetty.server.Server
+ import org.eclipse.jetty.servlet.ServletContextHandler
+ import org.scalatest.concurrent.Eventually._
+ import org.scalatest.time.SpanSugar._
+ 
++import org.apache.spark._
+ import org.apache.spark.LocalSparkContext._
+-import org.apache.spark.{SparkConf, SparkContext, SparkFunSuite}
+ 
+ class UISuite extends SparkFunSuite {
+ 
+@@ -45,6 +45,20 @@ class UISuite extends SparkFunSuite {
+     sc
+   }
+ 
++  private def sslDisabledConf(): (SparkConf, SSLOptions) = {
++    val conf = new SparkConf
++    (conf, new SecurityManager(conf).getSSLOptions("ui"))
++  }
++
++  private def sslEnabledConf(): (SparkConf, SSLOptions) = {
++    val conf = new SparkConf()
++      .set("spark.ssl.ui.enabled", "true")
++      .set("spark.ssl.ui.keyStore", "./src/test/resources/spark.keystore")
++      .set("spark.ssl.ui.keyStorePassword", "123456")
++      .set("spark.ssl.ui.keyPassword", "123456")
++    (conf, new SecurityManager(conf).getSSLOptions("ui"))
++  }
++
+   ignore("basic ui visibility") {
+     withSpark(newSparkContext()) { sc =>
+       // test if the ui is visible, and all the expected tabs are visible
+@@ -70,33 +84,92 @@ class UISuite extends SparkFunSuite {
+   }
+ 
+   test("jetty selects different port under contention") {
+-    val server = new ServerSocket(0)
+-    val startPort = server.getLocalPort
+-    val serverInfo1 = JettyUtils.startJettyServer(
+-      "0.0.0.0", startPort, Seq[ServletContextHandler](), new SparkConf)
+-    val serverInfo2 = JettyUtils.startJettyServer(
+-      "0.0.0.0", startPort, Seq[ServletContextHandler](), new SparkConf)
+-    // Allow some wiggle room in case ports on the machine are under contention
+-    val boundPort1 = serverInfo1.boundPort
+-    val boundPort2 = serverInfo2.boundPort
+-    assert(boundPort1 != startPort)
+-    assert(boundPort2 != startPort)
+-    assert(boundPort1 != boundPort2)
+-    serverInfo1.server.stop()
+-    serverInfo2.server.stop()
+-    server.close()
++    var server: ServerSocket = null
++    var serverInfo1: ServerInfo = null
++    var serverInfo2: ServerInfo = null
++    val (conf, sslOptions) = sslDisabledConf()
++    try {
++      server = new ServerSocket(0)
++      val startPort = server.getLocalPort
++      serverInfo1 = JettyUtils.startJettyServer(
++        "0.0.0.0", startPort, sslOptions, Seq[ServletContextHandler](), conf)
++      serverInfo2 = JettyUtils.startJettyServer(
++        "0.0.0.0", startPort, sslOptions, Seq[ServletContextHandler](), conf)
++      // Allow some wiggle room in case ports on the machine are under contention
++      val boundPort1 = serverInfo1.boundPort
++      val boundPort2 = serverInfo2.boundPort
++      assert(boundPort1 != startPort)
++      assert(boundPort2 != startPort)
++      assert(boundPort1 != boundPort2)
++    } finally {
++      stopServer(serverInfo1)
++      stopServer(serverInfo2)
++      closeSocket(server)
++    }
++  }
++
++  test("jetty with https selects different port under contention") {
++    var server: ServerSocket = null
++    var serverInfo1: ServerInfo = null
++    var serverInfo2: ServerInfo = null
++    try {
++      server = new ServerSocket(0)
++      val startPort = server.getLocalPort
++      val (conf, sslOptions) = sslEnabledConf()
++      serverInfo1 = JettyUtils.startJettyServer(
++        "0.0.0.0", startPort, sslOptions, Seq[ServletContextHandler](), conf, "server1")
++      serverInfo2 = JettyUtils.startJettyServer(
++        "0.0.0.0", startPort, sslOptions, Seq[ServletContextHandler](), conf, "server2")
++      // Allow some wiggle room in case ports on the machine are under contention
++      val boundPort1 = serverInfo1.boundPort
++      val boundPort2 = serverInfo2.boundPort
++      assert(boundPort1 != startPort)
++      assert(boundPort2 != startPort)
++      assert(boundPort1 != boundPort2)
++    } finally {
++      stopServer(serverInfo1)
++      stopServer(serverInfo2)
++      closeSocket(server)
++    }
+   }
+ 
+   test("jetty binds to port 0 correctly") {
+-    val serverInfo = JettyUtils.startJettyServer(
+-      "0.0.0.0", 0, Seq[ServletContextHandler](), new SparkConf)
+-    val server = serverInfo.server
+-    val boundPort = serverInfo.boundPort
+-    assert(server.getState === "STARTED")
+-    assert(boundPort != 0)
+-    Try { new ServerSocket(boundPort) } match {
+-      case Success(s) => fail("Port %s doesn't seem used by jetty server".format(boundPort))
+-      case Failure(e) =>
++    var socket: ServerSocket = null
++    var serverInfo: ServerInfo = null
++    val (conf, sslOptions) = sslDisabledConf()
++    try {
++      serverInfo = JettyUtils.startJettyServer(
++        "0.0.0.0", 0, sslOptions, Seq[ServletContextHandler](), conf)
++      val server = serverInfo.server
++      val boundPort = serverInfo.boundPort
++      assert(server.getState === "STARTED")
++      assert(boundPort != 0)
++      intercept[BindException] {
++        socket = new ServerSocket(boundPort)
++      }
++    } finally {
++      stopServer(serverInfo)
++      closeSocket(socket)
++    }
++  }
++
++  test("jetty with https binds to port 0 correctly") {
++    var socket: ServerSocket = null
++    var serverInfo: ServerInfo = null
++    try {
++      val (conf, sslOptions) = sslEnabledConf()
++      serverInfo = JettyUtils.startJettyServer(
++        "0.0.0.0", 0, sslOptions, Seq[ServletContextHandler](), conf)
++      val server = serverInfo.server
++      val boundPort = serverInfo.boundPort
++      assert(server.getState === "STARTED")
++      assert(boundPort != 0)
++      intercept[BindException] {
++        socket = new ServerSocket(boundPort)
++      }
++    } finally {
++      stopServer(serverInfo)
++      closeSocket(socket)
+     }
+   }
+ 
+@@ -117,4 +190,12 @@ class UISuite extends SparkFunSuite {
+       assert(splitUIAddress(2).toInt == boundPort)
+     }
+   }
++
++  def stopServer(info: ServerInfo): Unit = {
++    if (info != null && info.server != null) info.server.stop
++  }
++
++  def closeSocket(socket: ServerSocket): Unit = {
++    if (socket != null) socket.close
++  }
+ }
+diff --git a/docs/configuration.md b/docs/configuration.md
+index b1095f3..7ad201f 100644
+--- a/docs/configuration.md
++++ b/docs/configuration.md
+@@ -1444,6 +1444,7 @@ Apart from these, the following properties are also available, and may be useful
+             The reference list of protocols one can find on
+             <a href="https://blogs.oracle.com/java-platform-group/entry/diagnosing_tls_ssl_and_https">this</a>
+             page.
++            Note: If not set, it will use the default cipher suites of JVM.
+         </td>
+     </tr>
+     <tr>
+@@ -1469,6 +1470,13 @@ Apart from these, the following properties are also available, and may be useful
+         </td>
+     </tr>
+     <tr>
++        <td><code>spark.ssl.keyStoreType</code></td>
++        <td>JKS</td>
++        <td>
++            The type of the key-store.
++        </td>
++    </tr>
++    <tr>
+         <td><code>spark.ssl.protocol</code></td>
+         <td>None</td>
+         <td>
+@@ -1478,6 +1486,13 @@ Apart from these, the following properties are also available, and may be useful
+         </td>
+     </tr>
+     <tr>
++        <td><code>spark.ssl.needClientAuth</code></td>
++        <td>false</td>
++        <td>
++            Set true if SSL needs client authentication.
++        </td>
++    </tr>
++    <tr>
+         <td><code>spark.ssl.trustStore</code></td>
+         <td>None</td>
+         <td>
+@@ -1492,6 +1507,13 @@ Apart from these, the following properties are also available, and may be useful
+             A password to the trust-store.
+         </td>
+     </tr>
++    <tr>
++        <td><code>spark.ssl.trustStoreType</code></td>
++        <td>JKS</td>
++        <td>
++            The type of the trust-store.
++        </td>
++    </tr>
+ </table>
+ 
+ 
+diff --git a/docs/security.md b/docs/security.md
+index 341a04b..2e19b52 100644
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -6,15 +6,19 @@ title: Security
+ 
+ Spark currently supports authentication via a shared secret. Authentication can be configured to be on via the `spark.authenticate` configuration parameter. This parameter controls whether the Spark communication protocols do authentication using the shared secret. This authentication is a basic handshake to make sure both sides have the same shared secret and are allowed to communicate. If the shared secret is not identical they will not be allowed to communicate. The shared secret is created as follows:
+ 
+-* For Spark on [YARN](running-on-yarn.html) deployments, configuring `spark.authenticate` to `true` will automatically handle generating and distributing the shared secret. Each application will use a unique shared secret. 
++* For Spark on [YARN](running-on-yarn.html) deployments, configuring `spark.authenticate` to `true` will automatically handle generating and distributing the shared secret. Each application will use a unique shared secret.
+ * For other types of Spark deployments, the Spark parameter `spark.authenticate.secret` should be configured on each of the nodes. This secret will be used by all the Master/Workers and applications.
+ 
+ ## Web UI
+ 
+-The Spark UI can also be secured by using [javax servlet filters](http://docs.oracle.com/javaee/6/api/javax/servlet/Filter.html) via the `spark.ui.filters` setting. A user may want to secure the UI if it has data that other users should not be allowed to see. The javax servlet filter specified by the user can authenticate the user and then once the user is logged in, Spark can compare that user versus the view ACLs to make sure they are authorized to view the UI. The configs `spark.acls.enable` and `spark.ui.view.acls` control the behavior of the ACLs. Note that the user who started the application always has view access to the UI.  On YARN, the Spark UI uses the standard YARN web application proxy mechanism and will authenticate via any installed Hadoop filters.
++The Spark UI can be secured by using [javax servlet filters](http://docs.oracle.com/javaee/6/api/javax/servlet/Filter.html) via the `spark.ui.filters` setting
++and by using [https/SSL](http://en.wikipedia.org/wiki/HTTPS) via the `spark.ui.https.enabled` setting.
+ 
+-Spark also supports modify ACLs to control who has access to modify a running Spark application.  This includes things like killing the application or a task. This is controlled by the configs `spark.acls.enable` and `spark.modify.acls`. Note that if you are authenticating the web UI, in order to use the kill button on the web UI it might be necessary to add the users in the modify acls to the view acls also. On YARN, the modify acls are passed in and control who has modify access via YARN interfaces.
++### Authentication
+ 
++A user may want to secure the UI if it has data that other users should not be allowed to see. The javax servlet filter specified by the user can authenticate the user and then once the user is logged in, Spark can compare that user versus the view ACLs to make sure they are authorized to view the UI. The configs `spark.acls.enable` and `spark.ui.view.acls` control the behavior of the ACLs. Note that the user who started the application always has view access to the UI.  On YARN, the Spark UI uses the standard YARN web application proxy mechanism and will authenticate via any installed Hadoop filters.
++
++Spark also supports modify ACLs to control who has access to modify a running Spark application. This includes things like killing the application or a task. This is controlled by the configs `spark.acls.enable` and `spark.modify.acls`. Note that if you are authenticating the web UI, in order to use the kill button on the web UI it might be necessary to add the users in the modify acls to the view acls also. On YARN, the modify acls are passed in and control who has modify access via YARN interfaces.
+ Spark allows for a set of administrators to be specified in the acls who always have view and modify permissions to all the applications. is controlled by the config `spark.admin.acls`. This is useful on a shared cluster where you might have administrators or support staff who help users debug applications.
+ 
+ ## Event Logging
+@@ -23,8 +27,8 @@ If your applications are using event logging, the directory where the event logs
+ 
+ ## Encryption
+ 
+-Spark supports SSL for Akka and HTTP (for broadcast and file server) protocols. SASL encryption is
+-supported for the block transfer service. Encryption is not yet supported for the WebUI.
++Spark supports SSL for Akka and HTTP protocols. SASL encryption is supported for the block transfer
++service.
+ 
+ Encryption is not yet supported for data stored by Spark in temporary local storage, such as shuffle
+ files, cached data, and other application files. If encrypting this data is desired, a workaround is
+@@ -32,8 +36,41 @@ to configure your cluster manager to store application data on encrypted disks.
+ 
+ ### SSL Configuration
+ 
+-Configuration for SSL is organized hierarchically. The user can configure the default SSL settings which will be used for all the supported communication protocols unless they are overwritten by protocol-specific settings. This way the user can easily provide the common settings for all the protocols without disabling the ability to configure each one individually. The common SSL settings are at `spark.ssl` namespace in Spark configuration, while Akka SSL configuration is at `spark.ssl.akka` and HTTP for broadcast and file server SSL configuration is at `spark.ssl.fs`. The full breakdown can be found on the [configuration page](configuration.html).
++Configuration for SSL is organized hierarchically. The user can configure the default SSL settings
++which will be used for all the supported communication protocols unless they are overwritten by
++protocol-specific settings. This way the user can easily provide the common settings for all the
++protocols without disabling the ability to configure each one individually. The common SSL settings
++are at `spark.ssl` namespace in Spark configuration. The following table describes the
++component-specific configuration namespaces used to override the default settings:
++
++<table class="table">
++  <tr>
++    <th>Config Namespace</th>
++    <th>Component</th>
++  </tr>
++  <tr>
++    <td><code>spark.ssl.akka</code></td>
++    <td>Akka communication channels</td>
++  </tr>
++  <tr>
++    <td><code>spark.ssl.fs</code></td>
++    <td>HTTP file server and broadcast server</td>
++  </tr>
++  <tr>
++    <td><code>spark.ssl.ui</code></td>
++    <td>Spark application Web UI</td>
++  </tr>
++  <tr>
++    <td><code>spark.ssl.standalone</code></td>
++    <td>Standalone Master / Worker Web UI</td>
++  </tr>
++  <tr>
++    <td><code>spark.ssl.historyServer</code></td>
++    <td>History Server Web UI</td>
++  </tr>
++</table>
+ 
++The full breakdown of available SSL options  can be found on the [configuration page](configuration.html).
+ SSL must be configured on each node and configured for each component involved in communication using the particular protocol.
+ 
+ ### YARN mode
+-- 
+1.7.9.5
+

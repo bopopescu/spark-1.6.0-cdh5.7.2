@@ -1,0 +1,59 @@
+From eab39f29e3405dcb35d28d3ddead150d14e9ecff Mon Sep 17 00:00:00 2001
+From: Dilip Biswal <dbiswal@us.ibm.com>
+Date: Mon, 18 Jan 2016 10:28:01 -0800
+Subject: [PATCH 082/201] [SPARK-12558][FOLLOW-UP] AnalysisException when
+ multiple functions applied in GROUP BY clause
+
+Addresses the comments from Yin.
+https://github.com/apache/spark/pull/10520
+
+Author: Dilip Biswal <dbiswal@us.ibm.com>
+
+Closes #10758 from dilipbiswal/spark-12558-followup.
+
+(cherry picked from commit db9a860589bfc4f80d6cdf174a577ca538b82e6d)
+Signed-off-by: Yin Huai <yhuai@databricks.com>
+
+Conflicts:
+	sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala
+
+(cherry picked from commit 53184ce779d85022e49651e631df907dc75af045)
+---
+ .../spark/sql/hive/execution/HiveUDFSuite.scala    |   14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala
+index f8b0f01..3f73657 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala
+@@ -22,7 +22,7 @@ import java.util.{ArrayList, Arrays, Properties}
+ 
+ import org.apache.hadoop.conf.Configuration
+ import org.apache.hadoop.hive.ql.udf.UDAFPercentile
+-import org.apache.hadoop.hive.ql.udf.generic.{GenericUDFOPAnd, GenericUDTFExplode, GenericUDAFAverage, GenericUDF}
++import org.apache.hadoop.hive.ql.udf.generic._
+ import org.apache.hadoop.hive.ql.udf.generic.GenericUDF.DeferredObject
+ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory
+ import org.apache.hadoop.hive.serde2.objectinspector.{ObjectInspector, ObjectInspectorFactory}
+@@ -351,10 +351,14 @@ class HiveUDFSuite extends QueryTest with TestHiveSingleton with SQLTestUtils {
+   }
+ 
+   test("Hive UDF in group by") {
+-    Seq(Tuple1(1451400761)).toDF("test_date").registerTempTable("tab1")
+-    val count = sql("select date(cast(test_date as timestamp))" +
+-      " from tab1 group by date(cast(test_date as timestamp))").count()
+-    assert(count == 1)
++    withTempTable("tab1") {
++      Seq(Tuple1(1451400761)).toDF("test_date").registerTempTable("tab1")
++      sql(s"CREATE TEMPORARY FUNCTION testUDFToDate AS '${classOf[GenericUDFToDate].getName}'")
++      val count = sql("select testUDFToDate(cast(test_date as timestamp))" +
++        " from tab1 group by testUDFToDate(cast(test_date as timestamp))").count()
++      sql("DROP TEMPORARY FUNCTION IF EXISTS testUDFToDate")
++      assert(count == 1)
++    }
+   }
+ 
+   test("SPARK-11522 select input_file_name from non-parquet table"){
+-- 
+1.7.9.5
+

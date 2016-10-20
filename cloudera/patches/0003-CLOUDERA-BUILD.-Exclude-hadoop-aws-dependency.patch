@@ -1,0 +1,33 @@
+From f23ec2c4e1d8ce4b638adb1ac221f0609b5cc8d2 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Wed, 12 Nov 2014 17:00:49 -0800
+Subject: [PATCH 003/201] CLOUDERA-BUILD. Exclude hadoop-aws dependency.
+
+It's not used by Spark and it brings in an older com.fasterxml.jackson
+dependency which conflicts with the version used by other Spark
+dependencies.
+
+(cherry picked from commit a9532a345490fb34cd1ee31a67aea3a4f94a37c4)
+(cherry picked from commit 81aeb7a96f6f02c9bfbdcea90bd299aa9dba1452)
+---
+ pom.xml |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/pom.xml b/pom.xml
+index 363c563..e95d4ab 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1023,6 +1023,10 @@
+             <artifactId>asm</artifactId>
+           </exclusion>
+           <exclusion>
++            <groupId>org.apache.hadoop</groupId>
++            <artifactId>hadoop-aws</artifactId>
++          </exclusion>
++          <exclusion>
+             <groupId>org.ow2.asm</groupId>
+             <artifactId>asm</artifactId>
+           </exclusion>
+-- 
+1.7.9.5
+

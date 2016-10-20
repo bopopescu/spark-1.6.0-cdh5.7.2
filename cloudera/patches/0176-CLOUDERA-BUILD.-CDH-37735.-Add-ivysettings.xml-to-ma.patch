@@ -1,0 +1,28 @@
+From 6b70f75ce2b6de495122de8327d66b61f6ba20ab Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Fri, 26 Feb 2016 11:07:57 -0800
+Subject: [PATCH 176/201] CLOUDERA-BUILD. CDH-37735. Add ivysettings.xml to
+ make Hive tests happy.
+
+The code for HIVE-9664 depends on ivysettings.xml being available
+in the system class path when HIVE_HOME is not defined, and for some
+reason that doesn't happen during unit tests.
+
+(cherry picked from commit a258d47d34efab869dabeb013710964804966c7b)
+---
+ sql/hive/src/test/resources/ivysettings.xml |    3 +++
+ 1 file changed, 3 insertions(+)
+ create mode 100644 sql/hive/src/test/resources/ivysettings.xml
+
+diff --git a/sql/hive/src/test/resources/ivysettings.xml b/sql/hive/src/test/resources/ivysettings.xml
+new file mode 100644
+index 0000000..5785736
+--- /dev/null
++++ b/sql/hive/src/test/resources/ivysettings.xml
+@@ -0,0 +1,3 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<ivysettings />
++
+-- 
+1.7.9.5
+

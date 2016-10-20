@@ -1,0 +1,78 @@
+From 6941d212a7070a29bbd66bc3d0a2539a7d401aa4 Mon Sep 17 00:00:00 2001
+From: Amit Dev <amitdev@gmail.com>
+Date: Sun, 14 Feb 2016 11:41:27 +0000
+Subject: [PATCH 165/201] [SPARK-13300][DOCUMENTATION] Added pygments.rb
+ dependancy
+
+Looks like pygments.rb gem is also required for jekyll build to work. At least on Ubuntu/RHEL I could not do build without this dependency. So added this to steps.
+
+Author: Amit Dev <amitdev@gmail.com>
+
+Closes #11180 from amitdev/master.
+
+(cherry picked from commit 331293c30242dc43e54a25171ca51a1c9330ae44)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit ec40c5a59fe45e49496db6e0082ddc65c937a857)
+---
+ docs/README.md |   21 +++++++++++++--------
+ 1 file changed, 13 insertions(+), 8 deletions(-)
+
+diff --git a/docs/README.md b/docs/README.md
+index 1f4fd3e..bcea93e 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -10,15 +10,18 @@ whichever version of Spark you currently have checked out of revision control.
+ 
+ ## Prerequisites
+ The Spark documentation build uses a number of tools to build HTML docs and API docs in Scala,
+-Python and R. To get started you can run the following commands
++Python and R.
+ 
+-    $ sudo gem install jekyll
+-    $ sudo gem install jekyll-redirect-from
++You need to have [Ruby](https://www.ruby-lang.org/en/documentation/installation/) and
++[Python](https://docs.python.org/2/using/unix.html#getting-and-installing-the-latest-version-of-python)
++installed. Also install the following libraries:
++```sh
++    $ sudo gem install jekyll jekyll-redirect-from pygments.rb
+     $ sudo pip install Pygments
++    # Following is needed only for generating API docs
+     $ sudo pip install sphinx
+     $ Rscript -e 'install.packages(c("knitr", "devtools"), repos="http://cran.stat.ucla.edu/")'
+-
+-
++```
+ ## Generating the Documentation HTML
+ 
+ We include the Spark documentation as part of the source (as opposed to using a hosted wiki, such as
+@@ -38,14 +41,16 @@ compiled files.
+     $ jekyll build
+ 
+ You can modify the default Jekyll build as follows:
+-
++```sh
+     # Skip generating API docs (which takes a while)
+     $ SKIP_API=1 jekyll build
++    
+     # Serve content locally on port 4000
+     $ jekyll serve --watch
++    
+     # Build the site with extra features used on the live page
+     $ PRODUCTION=1 jekyll build
+-
++```
+ 
+ ## API Docs (Scaladoc, Sphinx, roxygen2)
+ 
+@@ -59,7 +64,7 @@ When you run `jekyll` in the `docs` directory, it will also copy over the scalad
+ Spark subprojects into the `docs` directory (and then also into the `_site` directory). We use a
+ jekyll plugin to run `build/sbt unidoc` before building the site so if you haven't run it (recently) it
+ may take some time as it generates all of the scaladoc.  The jekyll plugin also generates the
+-PySpark docs [Sphinx](http://sphinx-doc.org/).
++PySpark docs using [Sphinx](http://sphinx-doc.org/).
+ 
+ NOTE: To skip the step of building and copying over the Scala, Python, R API docs, run `SKIP_API=1
+ jekyll`.
+-- 
+1.7.9.5
+

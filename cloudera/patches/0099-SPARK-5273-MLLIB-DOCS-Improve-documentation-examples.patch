@@ -1,0 +1,58 @@
+From c8c35b8df7edb32eea43354bf2af390f46cbd10f Mon Sep 17 00:00:00 2001
+From: Sean Owen <sowen@cloudera.com>
+Date: Tue, 12 Jan 2016 12:13:32 +0000
+Subject: [PATCH 099/201] [SPARK-5273][MLLIB][DOCS] Improve documentation
+ examples for LinearRegression
+
+Use a much smaller step size in LinearRegressionWithSGD MLlib examples to achieve a reasonable RMSE.
+
+Our training folks hit this exact same issue when concocting an example and had the same solution.
+
+Author: Sean Owen <sowen@cloudera.com>
+
+Closes #10675 from srowen/SPARK-5273.
+
+(cherry picked from commit 9c7f34af37ef328149c1d66b4689d80a1589e1cc)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit 4c67d55c0ccf086e91d1755b62c8526f2ff51f21)
+---
+ docs/mllib-linear-methods.md |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/docs/mllib-linear-methods.md b/docs/mllib-linear-methods.md
+index 20b3561..aac8f75 100644
+--- a/docs/mllib-linear-methods.md
++++ b/docs/mllib-linear-methods.md
+@@ -590,7 +590,8 @@ val parsedData = data.map { line =>
+ 
+ // Building the model
+ val numIterations = 100
+-val model = LinearRegressionWithSGD.train(parsedData, numIterations)
++val stepSize = 0.00000001
++val model = LinearRegressionWithSGD.train(parsedData, numIterations, stepSize)
+ 
+ // Evaluate model on training examples and compute training error
+ val valuesAndPreds = parsedData.map { point =>
+@@ -655,8 +656,9 @@ public class LinearRegression {
+ 
+     // Building the model
+     int numIterations = 100;
++    double stepSize = 0.00000001;
+     final LinearRegressionModel model =
+-      LinearRegressionWithSGD.train(JavaRDD.toRDD(parsedData), numIterations);
++      LinearRegressionWithSGD.train(JavaRDD.toRDD(parsedData), numIterations, stepSize);
+ 
+     // Evaluate model on training examples and compute training error
+     JavaRDD<Tuple2<Double, Double>> valuesAndPreds = parsedData.map(
+@@ -706,7 +708,7 @@ data = sc.textFile("data/mllib/ridge-data/lpsa.data")
+ parsedData = data.map(parsePoint)
+ 
+ # Build the model
+-model = LinearRegressionWithSGD.train(parsedData)
++model = LinearRegressionWithSGD.train(parsedData, iterations=100, step=0.00000001)
+ 
+ # Evaluate the model on training data
+ valuesAndPreds = parsedData.map(lambda p: (p.label, model.predict(p.features)))
+-- 
+1.7.9.5
+

@@ -1,0 +1,37 @@
+From fa038cde3f3b9d93496f30a9360c7fcab1ab5029 Mon Sep 17 00:00:00 2001
+From: Mark Grover <mark@apache.org>
+Date: Thu, 3 Mar 2016 22:04:26 -0800
+Subject: [PATCH 178/201] CLOUDERA-BUILD. Disable docker tests in CDH
+
+(cherry picked from commit 9dd403829bbab9d3afe872697a54146877a7b451)
+---
+ docker-integration-tests/pom.xml |   15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/docker-integration-tests/pom.xml b/docker-integration-tests/pom.xml
+index cff6217..33dbb65 100644
+--- a/docker-integration-tests/pom.xml
++++ b/docker-integration-tests/pom.xml
+@@ -168,4 +168,19 @@
+     </dependency>
+     <!-- End Jersey dependencies -->
+   </dependencies>
++
++  <profiles>
++    <profile>
++      <id>disable-docker-tests</id>
++      <activation>
++        <property>
++          <name>cdh.build</name>
++        </property>
++      </activation>
++      <properties>
++        <skipTests>true</skipTests>
++      </properties>
++    </profile>
++  </profiles>
++
+ </project>
+-- 
+1.7.9.5
+

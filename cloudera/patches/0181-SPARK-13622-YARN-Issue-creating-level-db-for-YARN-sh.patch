@@ -1,0 +1,61 @@
+From f4f08ec7f47c9b11e1666fcdeef603844076a782 Mon Sep 17 00:00:00 2001
+From: nfraison <nfraison@yahoo.fr>
+Date: Mon, 28 Mar 2016 14:10:25 -0700
+Subject: [PATCH 181/201] [SPARK-13622][YARN] Issue creating level db for YARN
+ shuffle service
+
+## What changes were proposed in this pull request?
+This patch will ensure that we trim all path set in yarn.nodemanager.local-dirs and that the the scheme is well removed so the level db can be created.
+
+## How was this patch tested?
+manual tests.
+
+Author: nfraison <nfraison@yahoo.fr>
+
+Closes #11475 from ashangit/level_db_creation_issue.
+
+(cherry picked from commit ff3bea38ed2ac8dac5832f0bf8eac70192a512ef)
+(cherry picked from commit 504b992623a42f23f5ab305bc8908c8111b6f258)
+---
+ .../spark/network/yarn/YarnShuffleService.java     |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/network/yarn/src/main/java/org/apache/spark/network/yarn/YarnShuffleService.java b/network/yarn/src/main/java/org/apache/spark/network/yarn/YarnShuffleService.java
+index ba6d30a..4bc3c1a 100644
+--- a/network/yarn/src/main/java/org/apache/spark/network/yarn/YarnShuffleService.java
++++ b/network/yarn/src/main/java/org/apache/spark/network/yarn/YarnShuffleService.java
+@@ -24,6 +24,7 @@ import java.util.List;
+ import com.google.common.annotations.VisibleForTesting;
+ import com.google.common.collect.Lists;
+ import org.apache.hadoop.conf.Configuration;
++import org.apache.hadoop.fs.Path;
+ import org.apache.hadoop.yarn.api.records.ContainerId;
+ import org.apache.hadoop.yarn.server.api.*;
+ import org.slf4j.Logger;
+@@ -118,7 +119,7 @@ public class YarnShuffleService extends AuxiliaryService {
+     // an application was stopped while the NM was down, we expect yarn to call stopApplication()
+     // when it comes back
+     registeredExecutorFile =
+-      findRegisteredExecutorFile(conf.getStrings("yarn.nodemanager.local-dirs"));
++      findRegisteredExecutorFile(conf.getTrimmedStrings("yarn.nodemanager.local-dirs"));
+ 
+     TransportConf transportConf = new TransportConf("shuffle", new HadoopConfigProvider(conf));
+     // If authentication is enabled, set up the shuffle server to use a
+@@ -191,12 +192,12 @@ public class YarnShuffleService extends AuxiliaryService {
+ 
+   private File findRegisteredExecutorFile(String[] localDirs) {
+     for (String dir: localDirs) {
+-      File f = new File(dir, "registeredExecutors.ldb");
++      File f = new File(new Path(dir).toUri().getPath(), "registeredExecutors.ldb");
+       if (f.exists()) {
+         return f;
+       }
+     }
+-    return new File(localDirs[0], "registeredExecutors.ldb");
++    return new File(new Path(localDirs[0]).toUri().getPath(), "registeredExecutors.ldb");
+   }
+ 
+   /**
+-- 
+1.7.9.5
+

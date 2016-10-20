@@ -1,0 +1,56 @@
+From ddbf85c0bd924b90c0cd4aaad3554692b87e63fd Mon Sep 17 00:00:00 2001
+From: RJ Nowling <rnowling@gmail.com>
+Date: Tue, 5 Jan 2016 15:05:04 -0800
+Subject: [PATCH 102/201] [SPARK-12450][MLLIB] Un-persist broadcasted
+ variables in KMeans
+
+SPARK-12450 . Un-persist broadcasted variables in KMeans.
+
+Author: RJ Nowling <rnowling@gmail.com>
+
+Closes #10415 from rnowling/spark-12450.
+
+(cherry picked from commit 78015a8b7cc316343e302eeed6fe30af9f2961e8)
+Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+(cherry picked from commit 0afad6678431846a6eebda8d5891da9115884915)
+---
+ .../org/apache/spark/mllib/clustering/KMeans.scala |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/mllib/src/main/scala/org/apache/spark/mllib/clustering/KMeans.scala b/mllib/src/main/scala/org/apache/spark/mllib/clustering/KMeans.scala
+index 2895db7..e47c4db 100644
+--- a/mllib/src/main/scala/org/apache/spark/mllib/clustering/KMeans.scala
++++ b/mllib/src/main/scala/org/apache/spark/mllib/clustering/KMeans.scala
+@@ -301,6 +301,8 @@ class KMeans private (
+         contribs.iterator
+       }.reduceByKey(mergeContribs).collectAsMap()
+ 
++      bcActiveCenters.unpersist(blocking = false)
++
+       // Update the cluster centers and costs for each active run
+       for ((run, i) <- activeRuns.zipWithIndex) {
+         var changed = false
+@@ -419,7 +421,10 @@ class KMeans private (
+             s0
+           }
+         )
++
++      bcNewCenters.unpersist(blocking = false)
+       preCosts.unpersist(blocking = false)
++
+       val chosen = data.zip(costs).mapPartitionsWithIndex { (index, pointsWithCosts) =>
+         val rand = new XORShiftRandom(seed ^ (step << 16) ^ index)
+         pointsWithCosts.flatMap { case (p, c) =>
+@@ -448,6 +453,9 @@ class KMeans private (
+         ((r, KMeans.findClosest(bcCenters.value(r), p)._1), 1.0)
+       }
+     }.reduceByKey(_ + _).collectAsMap()
++
++    bcCenters.unpersist(blocking = false)
++
+     val finalCenters = (0 until runs).par.map { r =>
+       val myCenters = centers(r).toArray
+       val myWeights = (0 until myCenters.length).map(i => weightMap.getOrElse((r, i), 0.0)).toArray
+-- 
+1.7.9.5
+

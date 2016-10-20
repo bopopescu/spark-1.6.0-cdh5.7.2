@@ -1,0 +1,57 @@
+From 78c657c76dab4622185c0b9023e1c8859153a58e Mon Sep 17 00:00:00 2001
+From: Mario Briggs <mario.briggs@in.ibm.com>
+Date: Wed, 3 Feb 2016 09:50:28 -0800
+Subject: [PATCH 123/201] [SPARK-12739][STREAMING] Details of batch in
+ Streaming tab uses two Duration columns
+
+I have clearly prefix the two 'Duration' columns in 'Details of Batch' Streaming tab as 'Output Op Duration' and 'Job Duration'
+
+Author: Mario Briggs <mario.briggs@in.ibm.com>
+Author: mariobriggs <mariobriggs@in.ibm.com>
+
+Closes #11022 from mariobriggs/spark-12739.
+
+(cherry picked from commit e9eb248edfa81d75f99c9afc2063e6b3d9ee7392)
+Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+(cherry picked from commit 5fe8796c2fa859e30cf5ba293bee8957e23163bc)
+---
+ .../org/apache/spark/streaming/ui/BatchPage.scala  |    4 ++--
+ .../apache/spark/streaming/UISeleniumSuite.scala   |    5 +++--
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/streaming/src/main/scala/org/apache/spark/streaming/ui/BatchPage.scala b/streaming/src/main/scala/org/apache/spark/streaming/ui/BatchPage.scala
+index bc17119..1d45e30 100644
+--- a/streaming/src/main/scala/org/apache/spark/streaming/ui/BatchPage.scala
++++ b/streaming/src/main/scala/org/apache/spark/streaming/ui/BatchPage.scala
+@@ -37,10 +37,10 @@ private[ui] class BatchPage(parent: StreamingTab) extends WebUIPage("batch") {
+   private def columns: Seq[Node] = {
+     <th>Output Op Id</th>
+       <th>Description</th>
+-      <th>Duration</th>
++      <th>Output Op Duration</th>
+       <th>Status</th>
+       <th>Job Id</th>
+-      <th>Duration</th>
++      <th>Job Duration</th>
+       <th class="sorttable_nosort">Stages: Succeeded/Total</th>
+       <th class="sorttable_nosort">Tasks (for all stages): Succeeded/Total</th>
+       <th>Error</th>
+diff --git a/streaming/src/test/scala/org/apache/spark/streaming/UISeleniumSuite.scala b/streaming/src/test/scala/org/apache/spark/streaming/UISeleniumSuite.scala
+index 79314bc..067dfbb 100644
+--- a/streaming/src/test/scala/org/apache/spark/streaming/UISeleniumSuite.scala
++++ b/streaming/src/test/scala/org/apache/spark/streaming/UISeleniumSuite.scala
+@@ -139,8 +139,9 @@ class UISeleniumSuite
+         summaryText should contain ("Total delay:")
+ 
+         findAll(cssSelector("""#batch-job-table th""")).map(_.text).toSeq should be {
+-          List("Output Op Id", "Description", "Duration", "Status", "Job Id", "Duration",
+-            "Stages: Succeeded/Total", "Tasks (for all stages): Succeeded/Total", "Error")
++          List("Output Op Id", "Description", "Output Op Duration", "Status", "Job Id",
++            "Job Duration", "Stages: Succeeded/Total", "Tasks (for all stages): Succeeded/Total",
++            "Error")
+         }
+ 
+         // Check we have 2 output op ids
+-- 
+1.7.9.5
+

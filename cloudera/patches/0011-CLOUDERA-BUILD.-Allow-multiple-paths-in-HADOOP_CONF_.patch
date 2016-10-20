@@ -1,0 +1,30 @@
+From cb265791ac14b87e47461d3e08373a3b1d0ad0f4 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Tue, 21 Jul 2015 11:10:01 -0700
+Subject: [PATCH 011/201] CLOUDERA-BUILD. Allow multiple paths in
+ HADOOP_CONF_DIR.
+
+This allows us to append Hive configuration to the YARN configuration
+CM generates for Spark.
+
+(cherry picked from commit fadb73fa384a5239b95dc88f0659c38d21eb1cb1)
+---
+ .../org/apache/spark/deploy/yarn/Client.scala      |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/yarn/src/main/scala/org/apache/spark/deploy/yarn/Client.scala b/yarn/src/main/scala/org/apache/spark/deploy/yarn/Client.scala
+index f0590d2..1f3e043 100644
+--- a/yarn/src/main/scala/org/apache/spark/deploy/yarn/Client.scala
++++ b/yarn/src/main/scala/org/apache/spark/deploy/yarn/Client.scala
+@@ -536,7 +536,7 @@ private[spark] class Client(
+     }
+ 
+     Seq("HADOOP_CONF_DIR", "YARN_CONF_DIR").foreach { envKey =>
+-      sys.env.get(envKey).foreach { path =>
++      sys.env.get(envKey).toSeq.flatMap(_.split(File.pathSeparator)).foreach { path =>
+         val dir = new File(path)
+         if (dir.isDirectory()) {
+           dir.listFiles().foreach { file =>
+-- 
+1.7.9.5
+

@@ -1,0 +1,51 @@
+From 24c49a9e015d8f761f0f02ad1b9e39be8f1d8e79 Mon Sep 17 00:00:00 2001
+From: Takeshi YAMAMURO <linguin.m.s@gmail.com>
+Date: Mon, 28 Dec 2015 21:28:32 -0800
+Subject: [PATCH 044/201] [SPARK-11394][SQL] Throw IllegalArgumentException
+ for unsupported types in postgresql
+
+If DataFrame has BYTE types, throws an exception:
+org.postgresql.util.PSQLException: ERROR: type "byte" does not exist
+
+Author: Takeshi YAMAMURO <linguin.m.s@gmail.com>
+
+Closes #9350 from maropu/FixBugInPostgreJdbc.
+
+(cherry picked from commit 73862a1eb9744c3c32458c9c6f6431c23783786a)
+Signed-off-by: Yin Huai <yhuai@databricks.com>
+(cherry picked from commit 85a871818ee1134deb29387c78c6ce21eb6d2acb)
+---
+ .../apache/spark/sql/jdbc/PostgresDialect.scala    |    1 +
+ .../org/apache/spark/sql/jdbc/JDBCSuite.scala      |    4 ++++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/jdbc/PostgresDialect.scala b/sql/core/src/main/scala/org/apache/spark/sql/jdbc/PostgresDialect.scala
+index 3cf80f5..ad9e316 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/jdbc/PostgresDialect.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/jdbc/PostgresDialect.scala
+@@ -64,6 +64,7 @@ private object PostgresDialect extends JdbcDialect {
+       getJDBCType(et).map(_.databaseTypeDefinition)
+         .orElse(JdbcUtils.getCommonJDBCType(et).map(_.databaseTypeDefinition))
+         .map(typeName => JdbcType(s"$typeName[]", java.sql.Types.ARRAY))
++    case ByteType => throw new IllegalArgumentException(s"Unsupported type in postgresql: $dt");
+     case _ => None
+   }
+ 
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/jdbc/JDBCSuite.scala b/sql/core/src/test/scala/org/apache/spark/sql/jdbc/JDBCSuite.scala
+index 8c24aa3..26c9ad0 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/jdbc/JDBCSuite.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/jdbc/JDBCSuite.scala
+@@ -460,6 +460,10 @@ class JDBCSuite extends SparkFunSuite with BeforeAndAfter with SharedSQLContext
+     val Postgres = JdbcDialects.get("jdbc:postgresql://127.0.0.1/db")
+     assert(Postgres.getCatalystType(java.sql.Types.OTHER, "json", 1, null) === Some(StringType))
+     assert(Postgres.getCatalystType(java.sql.Types.OTHER, "jsonb", 1, null) === Some(StringType))
++    val errMsg = intercept[IllegalArgumentException] {
++      Postgres.getJDBCType(ByteType)
++    }
++    assert(errMsg.getMessage contains "Unsupported type in postgresql: ByteType")
+   }
+ 
+   test("DerbyDialect jdbc type mapping") {
+-- 
+1.7.9.5
+

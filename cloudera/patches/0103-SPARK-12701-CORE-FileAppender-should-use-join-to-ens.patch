@@ -1,0 +1,58 @@
+From 9bf5d9abf4bbc5edfb664ff46b08a072a84e046b Mon Sep 17 00:00:00 2001
+From: Bryan Cutler <cutlerb@gmail.com>
+Date: Fri, 8 Jan 2016 11:08:45 -0800
+Subject: [PATCH 103/201] [SPARK-12701][CORE] FileAppender should use join to
+ ensure writing thread completion
+
+Changed Logging FileAppender to use join in `awaitTermination` to ensure that thread is properly finished before returning.
+
+Author: Bryan Cutler <cutlerb@gmail.com>
+
+Closes #10654 from BryanCutler/fileAppender-join-thread-SPARK-12701.
+
+(cherry picked from commit ea104b8f1ce8aa109d1b16b696a61a47df6283b2)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit 773366818bbdd479fcb59b6fb7fccf28da13a303)
+---
+ .../apache/spark/util/logging/FileAppender.scala   |   11 +----------
+ 1 file changed, 1 insertion(+), 10 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/util/logging/FileAppender.scala b/core/src/main/scala/org/apache/spark/util/logging/FileAppender.scala
+index 9ddd02f..86bbaa2 100644
+--- a/core/src/main/scala/org/apache/spark/util/logging/FileAppender.scala
++++ b/core/src/main/scala/org/apache/spark/util/logging/FileAppender.scala
+@@ -29,7 +29,6 @@ private[spark] class FileAppender(inputStream: InputStream, file: File, bufferSi
+   extends Logging {
+   @volatile private var outputStream: FileOutputStream = null
+   @volatile private var markedForStop = false     // has the appender been asked to stopped
+-  @volatile private var stopped = false           // has the appender stopped
+ 
+   // Thread that reads the input stream and writes to file
+   private val writingThread = new Thread("File appending thread for " + file) {
+@@ -47,11 +46,7 @@ private[spark] class FileAppender(inputStream: InputStream, file: File, bufferSi
+    * or because of any error in appending
+    */
+   def awaitTermination() {
+-    synchronized {
+-      if (!stopped) {
+-        wait()
+-      }
+-    }
++    writingThread.join()
+   }
+ 
+   /** Stop the appender */
+@@ -81,10 +76,6 @@ private[spark] class FileAppender(inputStream: InputStream, file: File, bufferSi
+         }
+       } {
+         closeFile()
+-        synchronized {
+-          stopped = true
+-          notifyAll()
+-        }
+       }
+     } catch {
+       case e: Exception =>
+-- 
+1.7.9.5
+

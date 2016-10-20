@@ -1,0 +1,3418 @@
+commit 075fbc459cc9dacded4b7e638329bf8798772cb3
+Author: Jenkins <dev-kitchen@cloudera.com>
+Date:   Thu Jul 7 12:31:12 2016 -0700
+
+    Branching for 5.7.2 on Thu Jul  7 12:29:17 PDT 2016
+    
+    JOB_NAME : 'Cut-Release-Branches'
+    BUILD_NUMBER : '408'
+    CODE_BRANCH : ''
+    OLD_CDH_BRANCH : 'cdh5_5.7.x'
+    
+    Pushed to remote origin	git@github.sf.cloudera.com:CDH/spark.git (push)
+
+commit d30e4bfa0783744cca2aea6cf3ddc2997c65dc92
+Author: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+Date:   Fri May 20 15:50:06 2016 -0700
+
+    [SPARK-15165] [SPARK-15205] [SQL] Introduce place holder for comments in generated code (branch-1.6)
+    
+    This PR introduce place holder for comment in generated code and the purpose is same for #12939 but much safer.
+    
+    Generated code to be compiled doesn't include actual comments but includes place holder instead.
+    
+    Place holders in generated code will be replaced with actual comments only at the time of logging.
+    
+    Also, this PR can resolve SPARK-15205.
+    
+    (Please explain how this patch was tested. E.g. unit tests, integration tests, manual tests)
+    
+    Added new test cases.
+    
+    Author: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+    
+    Closes #13230 from sarutak/SPARK-15165-branch-1.6.
+    
+    (cherry picked from commit 9a18115a82c8bdc4f6f50df2e968e5aba979f53b)
+
+commit 687141b9c555d718bb93f9bb744b20109ab8dd47
+Author: Imran Rashid <irashid@cloudera.com>
+Date:   Mon Mar 28 15:57:51 2016 -0500
+
+    CLOUDERA-BUILD. [CDH-38800]  Turn off bogus warnings about deprecated memory configuration options
+    
+    (cherry picked from commit 6c31b0ce0396dcf1f1c9f0a698dca38c353b60e4)
+
+commit 43e052e1c361891cb5dd506c9f51fb64a86d57ac
+Author: Srinivasa Reddy Vundela <vsr@cloudera.com>
+Date:   Fri May 27 13:03:58 2016 -0700
+
+    Revert "CLOUDERA-BUILD CDH-27093 Checking for the required hadoop libraries before starting the spark"
+    
+    This reverts commit a979dcb1c8c661901dcfc6d75fffb35185abd4f2.
+
+commit 36f5a5d1a2f068c9dfbdd06de4ac379d1d42befe
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Fri Apr 29 23:13:50 2016 -0700
+
+    [SPARK-14391][LAUNCHER] Fix launcher communication test, take 2.
+    
+    There's actually a race here: the state of the handler was changed before
+    the connection was set, so the test code could be notified of the state
+    change, wake up, and still see the connection as null, triggering the assert.
+    
+    Author: Marcelo Vanzin <vanzin@cloudera.com>
+    
+    Closes #12785 from vanzin/SPARK-14391.
+    
+    (cherry picked from commit 73c20bf32524c2232febc8c4b12d5fa228347163)
+
+commit 38b63c5d30b62766282531cfcff71b897b46a439
+Author: Sean Owen <sowen@cloudera.com>
+Date:   Mon May 9 11:10:36 2016 -0700
+
+    [SPARK-15067][YARN] YARN executors are launched with fixed perm gen size
+    
+    ## What changes were proposed in this pull request?
+    
+    Look for MaxPermSize arguments anywhere in an arg, to account for quoted args. See JIRA for discussion.
+    
+    ## How was this patch tested?
+    
+    Jenkins tests
+    
+    Author: Sean Owen <sowen@cloudera.com>
+    
+    Closes #12985 from srowen/SPARK-15067.
+    
+    (cherry picked from commit 6747171eb19dec57c4076cab32580e42ffeb4f51)
+
+commit 7868d183a68b40f2563be2877698ee1cc87c4d89
+Author: Claes Redestad <claes.redestad@gmail.com>
+Date:   Sun Feb 14 11:49:37 2016 +0000
+
+    [SPARK-13278][CORE] Launcher fails to start with JDK 9 EA
+    
+    See http://openjdk.java.net/jeps/223 for more information about the JDK 9 version string scheme.
+    
+    Author: Claes Redestad <claes.redestad@gmail.com>
+    
+    Closes #11160 from cl4es/master.
+    
+    (cherry picked from commit 22e9723d6208f2cd2dfa26487ea1c041cb9d7dcd)
+
+commit a979dcb1c8c661901dcfc6d75fffb35185abd4f2
+Author: Srinivasa Reddy Vundela <vsr@cloudera.com>
+Date:   Tue Dec 1 15:04:36 2015 -0800
+
+    CLOUDERA-BUILD CDH-27093 Checking for the required hadoop libraries before starting the spark
+    
+    (cherry picked from commit 2468d55923357f68eed8f5e9d41cbda4d9160950)
+
+commit 8a1d9998730b002700312c042a0d2a52959635a0
+Author: Jenkins <dev-kitchen@cloudera.com>
+Date:   Tue May 10 11:00:35 2016 -0700
+
+    Update to 5.7.2-SNAPSHOT on Tue May 10 10:59:55 PDT 2016
+    
+    JOB_NAME : 'Cut-Release-Branches'
+    BUILD_NUMBER : '328'
+    CODE_BRANCH : ''
+    OLD_CDH_BRANCH : 'cdh5_5.7.x'
+    
+    Pushed to remote origin	git@github.sf.cloudera.com:CDH/spark.git (push)
+
+commit b0a910e8256a0f73acfaf8c3bbab4728916c3777
+Author: Sital Kedia <skedia@fb.com>
+Date:   Tue Apr 12 16:10:07 2016 -0700
+
+    [SPARK-14363] Fix executor OOM due to memory leak in the Sorter
+    
+    Fix memory leak in the Sorter. When the UnsafeExternalSorter spills the data to disk, it does not free up the underlying pointer array. As a result, we see a lot of executor OOM and also memory under utilization.
+    This is a regression partially introduced in PR https://github.com/apache/spark/pull/9241
+    
+    Tested by running a job and observed around 30% speedup after this change.
+    
+    Author: Sital Kedia <skedia@fb.com>
+    
+    Closes #12285 from sitalkedia/executor_oom.
+    
+    (cherry picked from commit d187e7dea9540d26b7800de4eb79863ef5f574bf)
+    Signed-off-by: Davies Liu <davies.liu@gmail.com>
+    
+    Conflicts:
+    	core/src/main/java/org/apache/spark/shuffle/sort/ShuffleInMemorySorter.java
+    	core/src/main/java/org/apache/spark/util/collection/unsafe/sort/UnsafeInMemorySorter.java
+    
+    (cherry picked from commit 413d0600ed61990e657c97d50d1431a8cd1ab0ed)
+    (cherry picked from commit 3bd1fb739713daaf20051061dfd7baf31b34e0e7)
+
+commit 2dd7debf7f4c3857887b5fa85bf30ffd50304d99
+Author: Ryan Blue <blue@apache.org>
+Date:   Wed Apr 20 11:26:42 2016 +0100
+
+    [SPARK-14679][UI] Fix UI DAG visualization OOM.
+    
+    ## What changes were proposed in this pull request?
+    
+    The DAG visualization can cause an OOM when generating the DOT file.
+    This happens because clusters are not correctly deduped by a contains
+    check because they use the default equals implementation. This adds a
+    working equals implementation.
+    
+    ## How was this patch tested?
+    
+    This adds a test suite that checks the new equals implementation.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #12437 from rdblue/SPARK-14679-fix-ui-oom.
+    
+    (cherry picked from commit a3451119d951949f24f3a4c5e33a5daea615dfed)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 17b1384431dd39e361bc3e88dffbe7ec6b4cc3d5)
+    (cherry picked from commit 784ab7e20881da2666c20766f5fbd0b5883cfc05)
+
+commit 1a4ef5989c4ef6344951d3b0308b48f2968e9b97
+Author: Lianhui Wang <lianhuiwang09@gmail.com>
+Date:   Thu Apr 21 10:02:23 2016 -0700
+
+    [SPARK-4452] [CORE] Shuffle data structures can starve others on the same thread for memory
+    
+    In #9241 It implemented a mechanism to call spill() on those SQL operators that support spilling if there is not enough memory for execution.
+    But ExternalSorter and AppendOnlyMap in Spark core are not worked. So this PR make them benefit from #9241. Now when there is not enough memory for execution, it can get memory by spilling ExternalSorter and AppendOnlyMap in Spark core.
+    
+    add two unit tests for it.
+    
+    Author: Lianhui Wang <lianhuiwang09@gmail.com>
+    
+    Closes #10024 from lianhuiwang/SPARK-4452-2.
+    
+    (cherry picked from commit 4f369176b750c980682a6be468cefa8627769c72)
+
+commit 1e7faf6f07d8ca1175a13e45915ed15fb4a413ca
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed May 4 11:16:31 2016 -0700
+
+    CLOUDERA-BUILD. CDH-39922. Distribute conf archive to executors also.
+    
+    This change is a partial backport of SPARK-14062. It makes sure
+    executors also see the log4j configuration the user is using on
+    the launcher node.
+    
+    (cherry picked from commit 663a00e250223492507af65086683afcbc018e9a)
+
+commit b84d460ca59ee28c0f44277644b79423acd5e8b8
+Author: Zhang, Liye <liye.zhang@intel.com>
+Date:   Mon Apr 11 10:06:57 2016 -0700
+
+    [SPARK-14290] [SPARK-13352] [CORE] [BACKPORT-1.6] avoid significant memory copy in Netty's tran…
+    
+    ## What changes were proposed in this pull request?
+    When netty transfer data that is not `FileRegion`, data will be in format of `ByteBuf`, If the data is large, there will occur significant performance issue because there is memory copy underlying in `sun.nio.ch.IOUtil.write`, the CPU is 100% used, and network is very low.
+    
+    In this PR, if data size is large, we will split it into small chunks to call `WritableByteChannel.write()`, so that avoid wasting of memory copy. Because the data can't be written within a single write, and it will call `transferTo` multiple times.
+    
+    ## How was this patch tested?
+    Spark unit test and manual test.
+    Manual test:
+    `sc.parallelize(Array(1,2,3),3).mapPartitions(a=>Array(new Array[Double](1024 * 1024 * 50)).iterator).reduce((a,b)=> a).length`
+    
+    For more details, please refer to [SPARK-14290](https://issues.apache.org/jira/browse/SPARK-14290)
+    
+    Author: Zhang, Liye <liye.zhang@intel.com>
+    
+    Closes #12296 from liyezhang556520/apache-branch-1.6-spark-14290.
+    
+    (cherry picked from commit baf29854eaa41976c75ecd2c472806c4a1c02c2a)
+
+commit 3403e0e021d5d600313f91420e864ed563075d2c
+Author: Zhang, Liye <liye.zhang@intel.com>
+Date:   Thu Mar 31 20:17:52 2016 -0700
+
+    [SPARK-14242][CORE][NETWORK] avoid copy in compositeBuffer for frame decoder
+    
+    ## What changes were proposed in this pull request?
+    In this patch, we set the initial `maxNumComponents` to `Integer.MAX_VALUE` instead of the default size ( which is 16) when allocating `compositeBuffer` in `TransportFrameDecoder` because `compositeBuffer` will introduce too many memory copies underlying if `compositeBuffer` is with default `maxNumComponents` when the frame size is large (which result in many transport messages). For details, please refer to [SPARK-14242](https://issues.apache.org/jira/browse/SPARK-14242).
+    
+    ## How was this patch tested?
+    spark unit tests and manual tests.
+    For manual tests, we can reproduce the performance issue with following code:
+    `sc.parallelize(Array(1,2,3),3).mapPartitions(a=>Array(new Array[Double](1024 * 1024 * 50)).iterator).reduce((a,b)=> a).length`
+    It's easy to see the performance gain, both from the running time and CPU usage.
+    
+    Author: Zhang, Liye <liye.zhang@intel.com>
+    
+    Closes #12038 from liyezhang556520/spark-14242.
+    
+    (cherry picked from commit 96941b12f8b465df21423275f3cd3ade579b4fa1)
+
+commit a10b4578b95a085a2e9536b3b776034767ab4e29
+Author: Imran Rashid <irashid@cloudera.com>
+Date:   Wed Apr 6 15:18:46 2016 -0500
+
+    CLOUDERA-BUILD. alternate snappy version on a mac.
+    
+    Since the CDH snappy version doesn't work nicely on a mac, use
+    a different version just to let you do local development.
+
+commit b66c9f9def820803822293b52c5bff11aeed1568
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Fri Apr 8 10:18:12 2016 -0700
+
+    CLOUDERA-BUILD. Override APACHE_MIRROR for post-commit builds.
+    
+    (cherry picked from commit 5e9cc850ff63078de9198133572ca7114740672a)
+
+commit 8cdef3521cfccd9cb796db63cd19df9dd90bd374
+Author: Mark Grover <mark@apache.org>
+Date:   Fri Apr 8 10:10:10 2016 -0700
+
+    [SPARK-14477][BUILD] Allow custom mirrors for downloading artifacts in build/mvn
+    
+    Allows to override locations for downloading Apache and Typesafe artifacts in build/mvn script.
+    
+    By running script like
+    ````
+    rm -rf build/apache-maven*
+    rm -rf build/zinc-*
+    rm -rf build/scala-*
+    
+    ...
+    
+    build/mvn -Pyarn -Phadoop-2.4 -Dhadoop.version=2.6.0 package
+    
+    APACHE_MIRROR=http://mirror.infra.cloudera.com/apache/ build/mvn -Pyarn -Phadoop-2.4 -Dhadoop.version=2.6.0 package
+    
+    APACHE_MIRROR=http://mirror.infra.cloudera.com/apache build/mvn -Pyarn -Phadoop-2.4 -Dhadoop.version=2.6.0 package
+    
+    APACHE_MIRROR=xyz build/mvn -Pyarn -Phadoop-2.4 -Dhadoop.version=2.6.0 package
+    ````
+    
+    Author: Mark Grover <mark@apache.org>
+    
+    Closes #12250 from markgrover/spark-14477.
+    
+    (cherry picked from commit a9b630f42ac0c6be3437f206beddaf0ef737f5c8)
+    (cherry picked from commit 19aac558badce163a12fc4e4ee10246daa76b9ae)
+
+commit e90758156d518a5a932fa39e3a4c73ec4007a272
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Mar 30 15:13:47 2016 -0700
+
+    CLOUDERA-BUILD. Increase some test timeouts.
+    
+    (cherry picked from commit a899194ff2dfa29cd3aa0c76cf49db9ee3a1ade2)
+
+commit a6cc2ca5e322b39220c526bc83ea70d4c9230b2d
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Mon Mar 28 14:55:10 2016 -0700
+
+    CLOUDERA-BUILD. CDH-38784. Fix ExternalSorter when shuffle encryption is enabled.
+    
+    This fixes an issue in the original change for SPARK-5682 that was backported
+    to CDH 5.7.0.
+    
+    (cherry picked from commit 7c720b13d482025eac2e4d7cecef9a40f4b45eec)
+
+commit f4f08ec7f47c9b11e1666fcdeef603844076a782
+Author: nfraison <nfraison@yahoo.fr>
+Date:   Mon Mar 28 14:10:25 2016 -0700
+
+    [SPARK-13622][YARN] Issue creating level db for YARN shuffle service
+    
+    ## What changes were proposed in this pull request?
+    This patch will ensure that we trim all path set in yarn.nodemanager.local-dirs and that the the scheme is well removed so the level db can be created.
+    
+    ## How was this patch tested?
+    manual tests.
+    
+    Author: nfraison <nfraison@yahoo.fr>
+    
+    Closes #11475 from ashangit/level_db_creation_issue.
+    
+    (cherry picked from commit ff3bea38ed2ac8dac5832f0bf8eac70192a512ef)
+    (cherry picked from commit 504b992623a42f23f5ab305bc8908c8111b6f258)
+
+commit 4890fb0c427037556670a6836f999b8fa8a30864
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Tue Jan 26 17:24:40 2016 -0800
+
+    [SPARK-12614][CORE] Don't throw non fatal exception from ask
+    
+    Right now RpcEndpointRef.ask may throw exception in some corner cases, such as calling ask after stopping RpcEnv. It's better to avoid throwing exception from RpcEndpointRef.ask. We can send the exception to the future for `ask`.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10568 from zsxwing/send-ask-fail.
+    
+    (cherry picked from commit 22662b241629b56205719ede2f801a476e10a3cd)
+
+commit 49e2a45b739408f87f55236d8e79bb08cf5e9867
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Thu Mar 3 22:53:07 2016 -0800
+
+    [SPARK-13652][CORE] Copy ByteBuffer in sendRpcSync as it will be recycled
+    
+    ## What changes were proposed in this pull request?
+    
+    `sendRpcSync` should copy the response content because the underlying buffer will be recycled and reused.
+    
+    ## How was this patch tested?
+    
+    Jenkins unit tests.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #11499 from zsxwing/SPARK-13652.
+    
+    (cherry picked from commit 465c665db1dc65e3b02c584cf7f8d06b24909b0c)
+    Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+    (cherry picked from commit 51c676e46c9be28aa9ac37fda45482b38f2eb1d5)
+
+commit fa038cde3f3b9d93496f30a9360c7fcab1ab5029
+Author: Mark Grover <mark@apache.org>
+Date:   Thu Mar 3 22:04:26 2016 -0800
+
+    CLOUDERA-BUILD. Disable docker tests in CDH
+    
+    (cherry picked from commit 9dd403829bbab9d3afe872697a54146877a7b451)
+
+commit 8cca0b9cd4a121e1a0a4903647c4ce043124d860
+Author: Mark Grover <mark@apache.org>
+Date:   Fri Feb 26 13:27:58 2016 -0800
+
+    CLOUDERA-BUILD. CDH-36918: Run unit tests in Spark's post-commit hook
+    
+    (cherry picked from commit 62e61d516ef4e16201a380160990177de0078806)
+
+commit 6b70f75ce2b6de495122de8327d66b61f6ba20ab
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Fri Feb 26 11:07:57 2016 -0800
+
+    CLOUDERA-BUILD. CDH-37735. Add ivysettings.xml to make Hive tests happy.
+    
+    The code for HIVE-9664 depends on ivysettings.xml being available
+    in the system class path when HIVE_HOME is not defined, and for some
+    reason that doesn't happen during unit tests.
+    
+    (cherry picked from commit a258d47d34efab869dabeb013710964804966c7b)
+
+commit 5dbf6a27fdc39940b7d3c3b22888ae725bd4e9bf
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Feb 24 15:30:39 2016 -0800
+
+    CLOUDERA-BUILD. Preview of "[SPARK-13478] [yarn] Use real user when fetching delegation tokens.".
+    
+    The Hive client library is not smart enough to notice that the current
+    user is a proxy user; so when using a proxy user, it fails to fetch
+    delegation tokens from the metastore because of a missing kerberos
+    TGT for the current user.
+    
+    To fix it, just run the code that fetches the delegation token as the
+    real logged in user.
+    
+    Tested on a kerberos cluster both submitting normally and with a proxy
+    user; Hive and HBase tokens are retrieved correctly in both cases.
+    
+    (cherry picked from commit 45c5e66aa4ee610e920e27ec8ead6ebacba03a44)
+
+commit aa5dda75f244f56a996e8c14dde2bee0514b8cc0
+Author: Daniel Jalova <djalova@us.ibm.com>
+Date:   Wed Feb 24 12:15:11 2016 +0000
+
+    [SPARK-12759][Core][Spark should fail fast if --executor-memory is too small for spark to start]
+    
+    Added an exception to be thrown in UnifiedMemoryManager.scala if the configuration given for executor memory is too low. Also modified the exception message thrown when driver memory is too low.
+    
+    This patch was tested manually by passing in config options to Spark shell. I also added a test in UnifiedMemoryManagerSuite.scala
+    
+    Author: Daniel Jalova <djalova@us.ibm.com>
+    
+    Closes #11255 from djalova/SPARK-12759.
+    
+    (cherry picked from commit bcfd55fa982b24184c07fcd4ccdd55dcf6465bf4)
+
+commit eca750a15829c0ecafc61c1c0986cf431095d9a9
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Wed Feb 24 13:35:36 2016 +0000
+
+    [SPARK-13390][SQL][BRANCH-1.6] Fix the issue that Iterator.map().toSeq is not Serializable
+    
+    ## What changes were proposed in this pull request?
+    
+    `scala.collection.Iterator`'s methods (e.g., map, filter) will return an `AbstractIterator` which is not Serializable. E.g.,
+    ```Scala
+    scala> val iter = Array(1, 2, 3).iterator.map(_ + 1)
+    iter: Iterator[Int] = non-empty iterator
+    
+    scala> println(iter.isInstanceOf[Serializable])
+    false
+    ```
+    If we call something like `Iterator.map(...).toSeq`, it will create a `Stream` that contains a non-serializable `AbstractIterator` field and make the `Stream` be non-serializable.
+    
+    This PR uses `toArray` instead of `toSeq` to fix such issue in `def createDataFrame(data: java.util.List[_], beanClass: Class[_]): DataFrame`.
+    
+    ## How was the this patch tested?
+    
+    Jenkins tests.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #11334 from zsxwing/SPARK-13390.
+    
+    (cherry picked from commit 06f4fce29227f9763d9f9abff6e7459542dce261)
+
+commit 2cf014c9f99e7d3325eee51a17ea5dd37919a020
+Author: Xiangrui Meng <meng@databricks.com>
+Date:   Mon Feb 22 23:54:21 2016 -0800
+
+    [SPARK-13355][MLLIB] replace GraphImpl.fromExistingRDDs by Graph.apply
+    
+    `GraphImpl.fromExistingRDDs` expects preprocessed vertex RDD as input. We call it in LDA without validating this requirement. So it might introduce errors. Replacing it by `Graph.apply` would be safer and more proper because it is a public API. The tests still pass. So maybe it is safe to use `fromExistingRDDs` here (though it doesn't seem so based on the implementation) or the test cases are special. jkbradley ankurdave
+    
+    Author: Xiangrui Meng <meng@databricks.com>
+    
+    Closes #11226 from mengxr/SPARK-13355.
+    
+    (cherry picked from commit 764ca18037b6b1884fbc4be9a011714a81495020)
+    Signed-off-by: Xiangrui Meng <meng@databricks.com>
+    (cherry picked from commit 0784e02fd438e5fa2e6639d6bba114fa647dad23)
+
+commit a1a28b513c20ec3600a930da6b19d79111c19fa2
+Author: Earthson Lu <Earthson.Lu@gmail.com>
+Date:   Mon Feb 22 23:40:36 2016 -0800
+
+    [SPARK-12746][ML] ArrayType(_, true) should also accept ArrayType(_, false) fix for branch-1.6
+    
+    https://issues.apache.org/jira/browse/SPARK-13359
+    
+    Author: Earthson Lu <Earthson.Lu@gmail.com>
+    
+    Closes #11237 from Earthson/SPARK-13359.
+    
+    (cherry picked from commit d31854da5155550f4e9c5e717c92dfec87d0ff6a)
+
+commit 6e715dde365f53809a30544eabec583ee39b8b0b
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Mon Feb 22 17:42:30 2016 -0800
+
+    [SPARK-13298][CORE][UI] Escape "label" to avoid DAG being broken by some special character
+    
+    ## What changes were proposed in this pull request?
+    
+    When there are some special characters (e.g., `"`, `\`) in `label`, DAG will be broken. This patch just escapes `label` to avoid DAG being broken by some special characters
+    
+    ## How was the this patch tested?
+    
+    Jenkins tests
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #11309 from zsxwing/SPARK-13298.
+    
+    (cherry picked from commit a11b3995190cb4a983adcc8667f7b316cce18d24)
+    Signed-off-by: Andrew Or <andrew@databricks.com>
+    (cherry picked from commit 85e6a2205d4549c81edbc2238fd15659120cee78)
+
+commit db272afcae28a8044febd08f0b9c338b949ac44f
+Author: Sean Owen <sowen@cloudera.com>
+Date:   Thu Feb 18 12:14:30 2016 -0800
+
+    [SPARK-13371][CORE][STRING] TaskSetManager.dequeueSpeculativeTask compares Option and String directly.
+    
+    ## What changes were proposed in this pull request?
+    
+    Fix some comparisons between unequal types that cause IJ warnings and in at least one case a likely bug (TaskSetManager)
+    
+    ## How was the this patch tested?
+    
+    Running Jenkins tests
+    
+    Author: Sean Owen <sowen@cloudera.com>
+    
+    Closes #11253 from srowen/SPARK-13371.
+    
+    (cherry picked from commit 78562535feb6e214520b29e0bbdd4b1302f01e93)
+    Signed-off-by: Andrew Or <andrew@databricks.com>
+    (cherry picked from commit 16f35c4c6e7e56bdb1402eab0877da6e8497cb3f)
+
+commit 040facd32ee074bd46f5152977937968817f6a78
+Author: Christopher C. Aycock <chris@chrisaycock.com>
+Date:   Wed Feb 17 11:24:18 2016 -0800
+
+    [SPARK-13350][DOCS] Config doc updated to state that PYSPARK_PYTHON's default is "python2.7"
+    
+    Author: Christopher C. Aycock <chris@chrisaycock.com>
+    
+    Closes #11239 from chrisaycock/master.
+    
+    (cherry picked from commit a7c74d7563926573c01baf613708a0f105a03e57)
+    Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+    (cherry picked from commit 66106a660149607348b8e51994eb2ce29d67abc0)
+
+commit 58bae71c48554dc88390610756009e5f13aabedd
+Author: Sital Kedia <skedia@fb.com>
+Date:   Tue Feb 16 22:27:34 2016 -0800
+
+    [SPARK-13279] Remove O(n^2) operation from scheduler.
+    
+    This commit removes an unnecessary duplicate check in addPendingTask that meant
+    that scheduling a task set took time proportional to (# tasks)^2.
+    
+    Author: Sital Kedia <skedia@fb.com>
+    
+    Closes #11175 from sitalkedia/fix_stuck_driver.
+    
+    (cherry picked from commit 1e1e31e03df14f2e7a9654e640fb2796cf059fe0)
+    Signed-off-by: Kay Ousterhout <kayousterhout@gmail.com>
+    (cherry picked from commit 98354cae984e3719a49050e7a6aa75dae78b12bb)
+
+commit eb213d7d2ffe474de9c9eb6f23cbdff58fd739f1
+Author: JeremyNixon <jnixon2@gmail.com>
+Date:   Mon Feb 15 09:25:13 2016 +0000
+
+    [SPARK-13312][MLLIB] Update java train-validation-split example in ml-guide
+    
+    Response to JIRA https://issues.apache.org/jira/browse/SPARK-13312.
+    
+    This contribution is my original work and I license the work to this project.
+    
+    Author: JeremyNixon <jnixon2@gmail.com>
+    
+    Closes #11199 from JeremyNixon/update_train_val_split_example.
+    
+    (cherry picked from commit adb548365012552e991d51740bfd3c25abf0adec)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 71f53edc0e39bc907755153b9603be8c6fcc1d93)
+
+commit 6941d212a7070a29bbd66bc3d0a2539a7d401aa4
+Author: Amit Dev <amitdev@gmail.com>
+Date:   Sun Feb 14 11:41:27 2016 +0000
+
+    [SPARK-13300][DOCUMENTATION] Added pygments.rb dependancy
+    
+    Looks like pygments.rb gem is also required for jekyll build to work. At least on Ubuntu/RHEL I could not do build without this dependency. So added this to steps.
+    
+    Author: Amit Dev <amitdev@gmail.com>
+    
+    Closes #11180 from amitdev/master.
+    
+    (cherry picked from commit 331293c30242dc43e54a25171ca51a1c9330ae44)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit ec40c5a59fe45e49496db6e0082ddc65c937a857)
+
+commit b6025414f6d6dd612dd9674cfbbc489495d4a052
+Author: Liang-Chi Hsieh <viirya@gmail.com>
+Date:   Sat Feb 13 15:56:20 2016 -0800
+
+    [SPARK-12363][MLLIB] Remove setRun and fix PowerIterationClustering failed test
+    
+    JIRA: https://issues.apache.org/jira/browse/SPARK-12363
+    
+    This issue is pointed by yanboliang. When `setRuns` is removed from PowerIterationClustering, one of the tests will be failed. I found that some `dstAttr`s of the normalized graph are not correct values but 0.0. By setting `TripletFields.All` in `mapTriplets` it can work.
+    
+    Author: Liang-Chi Hsieh <viirya@gmail.com>
+    Author: Xiangrui Meng <meng@databricks.com>
+    
+    Closes #10539 from viirya/fix-poweriter.
+    
+    (cherry picked from commit e3441e3f68923224d5b576e6112917cf1fe1f89a)
+    Signed-off-by: Xiangrui Meng <meng@databricks.com>
+    (cherry picked from commit 107290c94312524bfc4560ebe0de268be4ca56af)
+
+commit 5078a6e81f86b9ef2c78c2b01fe1eb1f226516c7
+Author: markpavey <mark.pavey@thefilter.com>
+Date:   Sat Feb 13 08:39:43 2016 +0000
+
+    [SPARK-13142][WEB UI] Problem accessing Web UI /logPage/ on Microsoft Windows
+    
+    Due to being on a Windows platform I have been unable to run the tests as described in the "Contributing to Spark" instructions. As the change is only to two lines of code in the Web UI, which I have manually built and tested, I am submitting this pull request anyway. I hope this is OK.
+    
+    Is it worth considering also including this fix in any future 1.5.x releases (if any)?
+    
+    I confirm this is my own original work and license it to the Spark project under its open source license.
+    
+    Author: markpavey <mark.pavey@thefilter.com>
+    
+    Closes #11135 from markpavey/JIRA_SPARK-13142_WindowsWebUILogFix.
+    
+    (cherry picked from commit 374c4b2869fc50570a68819cf0ece9b43ddeb34b)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 93a55f3df3c9527ecf4143cb40ac7212bc3a975a)
+
+commit aeac03d5ca3f8d113809e18bba523a5a2ff8f365
+Author: Tommy YU <tummyyu@163.com>
+Date:   Thu Feb 11 18:38:49 2016 -0800
+
+    [SPARK-13153][PYSPARK] ML persistence failed when handle no default value parameter
+    
+    Fix this defect by check default value exist or not.
+    
+    yanboliang Please help to review.
+    
+    Author: Tommy YU <tummyyu@163.com>
+    
+    Closes #11043 from Wenpei/spark-13153-handle-param-withnodefaultvalue.
+    
+    (cherry picked from commit d3e2e202994e063856c192e9fdd0541777b88e0e)
+    Signed-off-by: Xiangrui Meng <meng@databricks.com>
+    (cherry picked from commit 18661a2bb527adbd01e98158696a16f6d8162411)
+
+commit ba248e6ad5180cb94a55a4424642d5592140ec9b
+Author: sethah <seth.hendrickson16@gmail.com>
+Date:   Thu Feb 11 16:42:44 2016 -0800
+
+    [SPARK-13047][PYSPARK][ML] Pyspark Params.hasParam should not throw an error
+    
+    Pyspark Params class has a method `hasParam(paramName)` which returns `True` if the class has a parameter by that name, but throws an `AttributeError` otherwise. There is not currently a way of getting a Boolean to indicate if a class has a parameter. With Spark 2.0 we could modify the existing behavior of `hasParam` or add an additional method with this functionality.
+    
+    In Python:
+    ```python
+    from pyspark.ml.classification import NaiveBayes
+    nb = NaiveBayes()
+    print nb.hasParam("smoothing")
+    print nb.hasParam("notAParam")
+    ```
+    produces:
+    > True
+    > AttributeError: 'NaiveBayes' object has no attribute 'notAParam'
+    
+    However, in Scala:
+    ```scala
+    import org.apache.spark.ml.classification.NaiveBayes
+    val nb  = new NaiveBayes()
+    nb.hasParam("smoothing")
+    nb.hasParam("notAParam")
+    ```
+    produces:
+    > true
+    > false
+    
+    cc holdenk
+    
+    Author: sethah <seth.hendrickson16@gmail.com>
+    
+    Closes #10962 from sethah/SPARK-13047.
+    
+    (cherry picked from commit b35467388612167f0bc3d17142c21a406f6c620d)
+    Signed-off-by: Xiangrui Meng <meng@databricks.com>
+    (cherry picked from commit 9d45ec466a4067bb2d0b59ff1174bec630daa7b1)
+
+commit 3ccd5ad9b93164459afe240d97b51663a136d84f
+Author: Yu ISHIKAWA <yuu.ishikawa@gmail.com>
+Date:   Thu Feb 11 15:00:23 2016 -0800
+
+    [SPARK-13265][ML] Refactoring of basic ML import/export for other file system besides HDFS
+    
+    jkbradley I tried to improve the function to export a model. When I tried to export a model to S3 under Spark 1.6, we couldn't do that. So, it should offer S3 besides HDFS. Can you review it when you have time? Thanks!
+    
+    Author: Yu ISHIKAWA <yuu.ishikawa@gmail.com>
+    
+    Closes #11151 from yu-iskw/SPARK-13265.
+    
+    (cherry picked from commit efb65e09bcfa4542348f5cd37fe5c14047b862e5)
+    Signed-off-by: Xiangrui Meng <meng@databricks.com>
+    (cherry picked from commit 91a5ca5e84497c37de98c194566a568117332710)
+
+commit b9c873b931d571a9494a7e70d85c53f16446dc51
+Author: raela <raela@databricks.com>
+Date:   Wed Feb 10 17:00:54 2016 -0800
+
+    [SPARK-13274] Fix Aggregator Links on GroupedDataset Scala API
+    
+    Update Aggregator links to point to #org.apache.spark.sql.expressions.Aggregator
+    
+    Author: raela <raela@databricks.com>
+    
+    Closes #11158 from raelawang/master.
+    
+    (cherry picked from commit 719973b05ef6d6b9fbb83d76aebac6454ae84fad)
+    Signed-off-by: Reynold Xin <rxin@databricks.com>
+    (cherry picked from commit b57fac576f0033e8b43a89b4ada29901199aa29b)
+
+commit acb4347ae010696eafcfc35712790d908d96199d
+Author: Josh Rosen <joshrosen@databricks.com>
+Date:   Wed Feb 10 11:02:41 2016 -0800
+
+    [SPARK-12921] Fix another non-reflective TaskAttemptContext access in SpecificParquetRecordReaderBase
+    
+    This is a minor followup to #10843 to fix one remaining place where we forgot to use reflective access of TaskAttemptContext methods.
+    
+    Author: Josh Rosen <joshrosen@databricks.com>
+    
+    Closes #11131 from JoshRosen/SPARK-12921-take-2.
+    
+    (cherry picked from commit 93f1d91755475a242456fe06e57bfca10f4d722f)
+
+commit 0b9302464b2cc703a45c7d8164740908fac6ee4d
+Author: Liang-Chi Hsieh <viirya@gmail.com>
+Date:   Tue Feb 9 17:10:55 2016 -0800
+
+    [SPARK-10524][ML] Use the soft prediction to order categories' bins
+    
+    JIRA: https://issues.apache.org/jira/browse/SPARK-10524
+    
+    Currently we use the hard prediction (`ImpurityCalculator.predict`) to order categories' bins. But we should use the soft prediction.
+    
+    Author: Liang-Chi Hsieh <viirya@gmail.com>
+    Author: Liang-Chi Hsieh <viirya@appier.com>
+    Author: Joseph K. Bradley <joseph@databricks.com>
+    
+    Closes #8734 from viirya/dt-soft-centroids.
+    
+    (cherry picked from commit 9267bc68fab65c6a798e065a1dbe0f5171df3077)
+    Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+    (cherry picked from commit 89818cbf808137201d2558eaab312264d852cf00)
+
+commit ebe8e7f18a247906db60397c18cbe33f79658283
+Author: Davies Liu <davies@databricks.com>
+Date:   Mon Feb 8 12:08:58 2016 -0800
+
+    [SPARK-13210][SQL] catch OOM when allocate memory and expand array
+    
+    There is a bug when we try to grow the buffer, OOM is ignore wrongly (the assert also skipped by JVM), then we try grow the array again, this one will trigger spilling free the current page, the current record we inserted will be invalid.
+    
+    The root cause is that JVM has less free memory than MemoryManager thought, it will OOM when allocate a page without trigger spilling. We should catch the OOM, and acquire memory again to trigger spilling.
+    
+    And also, we could not grow the array in `insertRecord` of `InMemorySorter` (it was there just for easy testing).
+    
+    Author: Davies Liu <davies@databricks.com>
+    
+    Closes #11095 from davies/fix_expand.
+    
+    (cherry picked from commit 9b30096227263f77fc67ed8f12fb2911c3256774)
+
+commit 1b306a01c459cc1645620dd12252c3a0c4f63a3c
+Author: Bill Chambers <bill@databricks.com>
+Date:   Fri Feb 5 14:35:39 2016 -0800
+
+    [SPARK-13214][DOCS] update dynamicAllocation documentation
+    
+    Author: Bill Chambers <bill@databricks.com>
+    
+    Closes #11094 from anabranch/dynamic-docs.
+    
+    (cherry picked from commit 66e1383de2650a0f06929db8109a02e32c5eaf6b)
+    Signed-off-by: Andrew Or <andrew@databricks.com>
+    (cherry picked from commit 3ca5dc3072d0d96ba07d102e9104cbbb177c352b)
+
+commit f141ae1f3596d8ed6114581bf45d382d8bae23f5
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Thu Feb 4 12:43:16 2016 -0800
+
+    [SPARK-13195][STREAMING] Fix NoSuchElementException when a state is not set but timeoutThreshold is defined
+    
+    Check the state Existence before calling get.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #11081 from zsxwing/SPARK-13195.
+    
+    (cherry picked from commit 8e2f296306131e6c7c2f06d6672995d3ff8ab021)
+    Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+    (cherry picked from commit a907c7c64887833770cd593eecccf53620de59b7)
+
+commit cfd7637b61726d71c4797cb904b58049a2f0877e
+Author: Narine Kokhlikyan <narine.kokhlikyan@gmail.com>
+Date:   Fri Jan 22 10:35:02 2016 -0800
+
+    [SPARK-12629][SPARKR] Fixes for DataFrame saveAsTable method
+    
+    I've tried to solve some of the issues mentioned in: https://issues.apache.org/jira/browse/SPARK-12629
+    Please, let me know what do you think.
+    Thanks!
+    
+    Author: Narine Kokhlikyan <narine.kokhlikyan@gmail.com>
+    
+    Closes #10580 from NarineK/sparkrSavaAsRable.
+    
+    (cherry picked from commit 8a88e121283472c26e70563a4e04c109e9b183b3)
+    Signed-off-by: Shivaram Venkataraman <shivaram@cs.berkeley.edu>
+    (cherry picked from commit 53f518a6e2791cc4967793b6cc0d4a68d579cb33)
+
+commit 10c3f7d900f206273aecb1e79f93078987d29047
+Author: Holden Karau <holden@us.ibm.com>
+Date:   Sun Jan 3 17:04:35 2016 -0800
+
+    [SPARK-12611][SQL][PYSPARK][TESTS] Fix test_infer_schema_to_local
+    
+    Previously (when the PR was first created) not specifying b= explicitly was fine (and treated as default null) - instead be explicit about b being None in the test.
+    
+    Author: Holden Karau <holden@us.ibm.com>
+    
+    Closes #10564 from holdenk/SPARK-12611-fix-test-infer-schema-local.
+    
+    (cherry picked from commit 13dab9c3862cc454094cd9ba7b4504a2d095028f)
+    Signed-off-by: Yin Huai <yhuai@databricks.com>
+    (cherry picked from commit 85518eda459a48c72a629b4cb9994fc753f72a58)
+
+commit f3fdf71493a1de73183b98b3baef7571c2211c06
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Mon Jan 18 16:50:05 2016 -0800
+
+    [SPARK-12894][DOCUMENT] Add deploy instructions for Python in Kinesis integration doc
+    
+    This PR added instructions to get Kinesis assembly jar for Python users in the Kinesis integration page like Kafka doc.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10822 from zsxwing/kinesis-doc.
+    
+    (cherry picked from commit 721845c1b64fd6e3b911bd77c94e01dc4e5fd102)
+    Signed-off-by: Tathagata Das <tathagata.das1565@gmail.com>
+    (cherry picked from commit d43704d7fc6a5e9da4968b1dafa8d4b1c341ee8d)
+
+commit c6848bf5edc5e4f624c086a434b551d007f3c823
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Mon Jan 18 15:38:03 2016 -0800
+
+    [SPARK-12814][DOCUMENT] Add deploy instructions for Python in flume integration doc
+    
+    This PR added instructions to get flume assembly jar for Python users in the flume integration page like Kafka doc.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10746 from zsxwing/flume-doc.
+    
+    (cherry picked from commit a973f483f6b819ed4ecac27ff5c064ea13a8dd71)
+    Signed-off-by: Tathagata Das <tathagata.das1565@gmail.com>
+    (cherry picked from commit 7482c7b5aba5b649510bbb8886bbf2b44f86f543)
+
+commit 7196a178bb9e9893ab792573347b8f8b05fc060b
+Author: Jeff Lam <sha0lin@alumni.carnegiemellon.edu>
+Date:   Sat Jan 16 10:41:40 2016 +0000
+
+    [SPARK-12722][DOCS] Fixed typo in Pipeline example
+    
+    http://spark.apache.org/docs/latest/ml-guide.html#example-pipeline
+    ```
+    val sameModel = Pipeline.load("/tmp/spark-logistic-regression-model")
+    ```
+    should be
+    ```
+    val sameModel = PipelineModel.load("/tmp/spark-logistic-regression-model")
+    ```
+    cc: jkbradley
+    
+    Author: Jeff Lam <sha0lin@alumni.carnegiemellon.edu>
+    
+    Closes #10769 from Agent007/SPARK-12722.
+    
+    (cherry picked from commit 86972fa52152d2149b88ba75be048a6986006285)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 5803fce900cf74508e9520370b8d777862a15a49)
+
+commit 0ec05d19116021e3505a5492c09a08f9e8a7aba0
+Author: Oscar D. Lara Yejas <odlaraye@oscars-mbp.usca.ibm.com>
+Date:   Fri Jan 15 07:37:54 2016 -0800
+
+    [SPARK-11031][SPARKR] Method str() on a DataFrame
+    
+    Author: Oscar D. Lara Yejas <odlaraye@oscars-mbp.usca.ibm.com>
+    Author: Oscar D. Lara Yejas <olarayej@mail.usf.edu>
+    Author: Oscar D. Lara Yejas <oscar.lara.yejas@us.ibm.com>
+    Author: Oscar D. Lara Yejas <odlaraye@oscars-mbp.attlocal.net>
+    
+    Closes #9613 from olarayej/SPARK-11031.
+    
+    (cherry picked from commit ba4a641902f95c5a9b3a6bebcaa56039eca2720d)
+    Signed-off-by: Shivaram Venkataraman <shivaram@cs.berkeley.edu>
+    (cherry picked from commit 5a00528391b9b15dd6db15123578d78077f495d8)
+
+commit fba7e5eb490702dcd25772c9aa1d7514b445e64f
+Author: Yin Huai <yhuai@databricks.com>
+Date:   Tue Jan 12 15:15:10 2016 -0800
+
+    Revert "[SPARK-12645][SPARKR] SparkR support hash function"
+    
+    This reverts commit 8b5f23043322254c725c703c618ba3d3cc4a4240.
+    
+    (cherry picked from commit 03e523e520b4717a7932859e0bc7d43e5b08dd92)
+
+commit 13f107a94bde6fdd24e1cc2baef22f407fb92804
+Author: Brandon Bradley <bradleytastic@gmail.com>
+Date:   Mon Jan 11 14:21:50 2016 -0800
+
+    [SPARK-12758][SQL] add note to Spark SQL Migration guide about TimestampType casting
+    
+    Warning users about casting changes.
+    
+    Author: Brandon Bradley <bradleytastic@gmail.com>
+    
+    Closes #10708 from blbradley/spark-12758.
+    
+    (cherry picked from commit a767ee8a0599f5482717493a3298413c65d8ff89)
+    Signed-off-by: Michael Armbrust <michael@databricks.com>
+    (cherry picked from commit dd2cf64f300ec42802dbea38b95047842de81870)
+
+commit 93df28b9bc142bc6d50c49f473d72af0138d6cc4
+Author: Yanbo Liang <ybliang8@gmail.com>
+Date:   Sat Jan 9 12:29:51 2016 +0530
+
+    [SPARK-12645][SPARKR] SparkR support hash function
+    
+    Add ```hash``` function for SparkR ```DataFrame```.
+    
+    Author: Yanbo Liang <ybliang8@gmail.com>
+    
+    Closes #10597 from yanboliang/spark-12645.
+    
+    (cherry picked from commit 3d77cffec093bed4d330969f1a996f3358b9a772)
+    Signed-off-by: Shivaram Venkataraman <shivaram@cs.berkeley.edu>
+    (cherry picked from commit 8b5f23043322254c725c703c618ba3d3cc4a4240)
+
+commit 4589fbe0c5153315a650b2a7cca8e0c935789043
+Author: Yanbo Liang <ybliang8@gmail.com>
+Date:   Wed Jan 6 12:05:41 2016 +0530
+
+    [SPARK-12393][SPARKR] Add read.text and write.text for SparkR
+    
+    Add ```read.text``` and ```write.text``` for SparkR.
+    cc sun-rui felixcheung shivaram
+    
+    Author: Yanbo Liang <ybliang8@gmail.com>
+    
+    Closes #10348 from yanboliang/spark-12393.
+    
+    (cherry picked from commit d1fea41363c175a67b97cb7b3fe89f9043708739)
+    Signed-off-by: Shivaram Venkataraman <shivaram@cs.berkeley.edu>
+    (cherry picked from commit c3135d02176cdd679b4a0e4883895b9e9f001a55)
+
+commit 91438a159f71ae0b6717bcf1d102ca42c00da96f
+Author: Michael Armbrust <michael@databricks.com>
+Date:   Mon Jan 4 23:23:41 2016 -0800
+
+    [SPARK-12568][SQL] Add BINARY to Encoders
+    
+    Author: Michael Armbrust <michael@databricks.com>
+    
+    Closes #10516 from marmbrus/datasetCleanup.
+    
+    (cherry picked from commit 53beddc5bf04a35ab73de99158919c2fdd5d4508)
+    Signed-off-by: Michael Armbrust <michael@databricks.com>
+    (cherry picked from commit d9e4438b5c7b3569662a50973164955332463d05)
+
+commit 6f6e1e2183420c5b39efd80fe457f066269e0bf3
+Author: Daoyuan Wang <daoyuan.wang@intel.com>
+Date:   Tue Dec 29 07:02:30 2015 +0900
+
+    [SPARK-12222][CORE] Deserialize RoaringBitmap using Kryo serializer throw Buffer underflow exception
+    
+    Since we only need to implement `def skipBytes(n: Int)`,
+    code in #10213 could be simplified.
+    davies scwf
+    
+    Author: Daoyuan Wang <daoyuan.wang@intel.com>
+    
+    Closes #10253 from adrian-wang/kryo.
+    
+    (cherry picked from commit a6d385322e7dfaff600465fa5302010a5f122c6b)
+    Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+    (cherry picked from commit a9c52d4954aa445ab751b38ddbfd8fb6f84d7c14)
+
+commit 5423e022a09987b94c2a021d8359741de74f3831
+Author: gatorsmile <gatorsmile@gmail.com>
+Date:   Sun Dec 27 23:18:48 2015 -0800
+
+    [SPARK-12520] [PYSPARK] Correct Descriptions and Add Use Cases in Equi-Join
+    
+    After reading the JIRA https://issues.apache.org/jira/browse/SPARK-12520, I double checked the code.
+    
+    For example, users can do the Equi-Join like
+      ```df.join(df2, 'name', 'outer').select('name', 'height').collect()```
+    - There exists a bug in 1.5 and 1.4. The code just ignores the third parameter (join type) users pass. However, the join type we called is `Inner`, even if the user-specified type is the other type (e.g., `Outer`).
+    - After a PR: https://github.com/apache/spark/pull/8600, the 1.6 does not have such an issue, but the description has not been updated.
+    
+    Plan to submit another PR to fix 1.5 and issue an error message if users specify a non-inner join type when using Equi-Join.
+    
+    Author: gatorsmile <gatorsmile@gmail.com>
+    
+    Closes #10477 from gatorsmile/pyOuterJoin.
+    
+    (cherry picked from commit b8da77ef776ab9cdc130a70293d75e7bdcdf95b0)
+
+commit d69ca940d90e37d3943a7e7f6016c3a52fdcde59
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Tue Dec 22 16:39:10 2015 -0800
+
+    [SPARK-12429][STREAMING][DOC] Add Accumulator and Broadcast example for Streaming
+    
+    This PR adds Scala, Java and Python examples to show how to use Accumulator and Broadcast in Spark Streaming to support checkpointing.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10385 from zsxwing/accumulator-broadcast-example.
+    
+    (cherry picked from commit 20591afd790799327f99485c5a969ed7412eca45)
+
+commit 56428c504eaea22239da8bf3a0a0c2f74a7bea84
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Tue Dec 22 15:33:30 2015 -0800
+
+    [SPARK-12487][STREAMING][DOCUMENT] Add docs for Kafka message handler
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10439 from zsxwing/kafka-message-handler-doc.
+    
+    (cherry picked from commit 93db50d1c2ff97e6eb9200a995e4601f752968ae)
+    Signed-off-by: Tathagata Das <tathagata.das1565@gmail.com>
+    (cherry picked from commit 94fb5e870403e19feca8faf7d98bba6d14f7a362)
+
+commit 6897674878453561b7b914f0b83e79b706940b9e
+Author: Yin Huai <yhuai@databricks.com>
+Date:   Tue Jan 26 08:34:10 2016 -0800
+
+    [SPARK-12682][SQL][HOT-FIX] Fix test compilation
+    
+    Author: Yin Huai <yhuai@databricks.com>
+    
+    Closes #10925 from yhuai/branch-1.6-hot-fix.
+    
+    (cherry picked from commit 6ce3dd940def9257982d556cd3adf307fc2fe8a4)
+
+commit 26a99b5b14fbe3ee9e0390f18f89c77567acd483
+Author: Sameer Agarwal <sameer@databricks.com>
+Date:   Tue Jan 26 07:50:37 2016 -0800
+
+    [SPARK-12682][SQL] Add support for (optionally) not storing tables in hive metadata format
+    
+    This PR adds a new table option (`skip_hive_metadata`) that'd allow the user to skip storing the table metadata in hive metadata format. While this could be useful in general, the specific use-case for this change is that Hive doesn't handle wide schemas well (see https://issues.apache.org/jira/browse/SPARK-12682 and https://issues.apache.org/jira/browse/SPARK-6024) which in turn prevents such tables from being queried in SparkSQL.
+    
+    Author: Sameer Agarwal <sameer@databricks.com>
+    
+    Closes #10826 from sameeragarwal/skip-hive-metadata.
+    
+    (cherry picked from commit 08c781ca672820be9ba32838bbe40d2643c4bde4)
+    Signed-off-by: Yin Huai <yhuai@databricks.com>
+    (cherry picked from commit f0c98a60f0b4982dc8e29b4a5d213fd8ce4abaf2)
+
+commit dcd14c55caff55ea31da62dd109d26abf346742a
+Author: Michael Armbrust <michael@databricks.com>
+Date:   Mon Feb 22 15:27:29 2016 -0800
+
+    [SPARK-12546][SQL] Change default number of open parquet files
+    
+    A common problem that users encounter with Spark 1.6.0 is that writing to a partitioned parquet table OOMs.  The root cause is that parquet allocates a significant amount of memory that is not accounted for by our own mechanisms.  As a workaround, we can ensure that only a single file is open per task unless the user explicitly asks for more.
+    
+    Author: Michael Armbrust <michael@databricks.com>
+    
+    Closes #11308 from marmbrus/parquetWriteOOM.
+    
+    (cherry picked from commit 173aa949c309ff7a7a03e9d762b9108542219a95)
+
+commit 47c7c462836495181db070133f984060f80d70a5
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Wed Jan 6 12:03:01 2016 -0800
+
+    [SPARK-12617][PYSPARK] Move Py4jCallbackConnectionCleaner to Streaming
+    
+    Move Py4jCallbackConnectionCleaner to Streaming because the callback server starts only in StreamingContext.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10621 from zsxwing/SPARK-12617-2.
+    
+    (cherry picked from commit 1e6648d62fb82b708ea54c51cd23bfe4f542856e)
+    Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+    (cherry picked from commit d821fae0ecca6393d3632977797d72ba594d26a9)
+    (cherry picked from commit bd56448e024bf62dd8b2b6cf991a032a029b55aa)
+
+commit af2823e0188f9c48932ae22f67324987b80881f2
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Tue Jan 5 13:10:46 2016 -0800
+
+    [SPARK-12617] [PYSPARK] Clean up the leak sockets of Py4J
+    
+    This patch added Py4jCallbackConnectionCleaner to clean the leak sockets of Py4J every 30 seconds. This is a workaround before Py4J fixes the leak issue https://github.com/bartdag/py4j/issues/187
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10579 from zsxwing/SPARK-12617.
+    
+    (cherry picked from commit 047a31bb1042867b20132b347b1e08feab4562eb)
+    Signed-off-by: Davies Liu <davies.liu@gmail.com>
+    (cherry picked from commit f31d0fd9ea12bfe94434671fbcfe3d0e06a4a97d)
+    (cherry picked from commit 208d1a4017d8cb0f3b41fc170cd4e5b5343254cf)
+
+commit 1da2fbde7f71ee8f6e6e4da1049408370f1a472d
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Thu Feb 18 15:46:08 2016 -0800
+
+    CLOUDERA-BUILD. CDH-37391. Fix CTE query parsing.
+    
+    The AST for CTE queries changed because of an internal Hive change
+    (HIVE-10698 I believe), so the Spark parser needs to reflect that.
+    
+    (cherry picked from commit 06ce9dae07f9dbd965c81b7de128eafcf7407e89)
+
+commit 3943448b44e6551a8b303f645e13360abe76591a
+Author: Imran Rashid <irashid@cloudera.com>
+Date:   Fri Feb 12 16:48:22 2016 -0600
+
+    CLOUDERA-BUILD Fix test failure in HistoryServerSuite by only using the rest api, no HtmlUnitDriver.
+    
+    SPARK-7889 introduced some additional tests that use HtmlUnitDriver -- there seems to be some
+    version conflict just in the cdh build that leads to class not found exceptions.  The tests against
+    the rest api are probably sufficient anyway.
+    
+    (cherry picked from commit 53b561d13bfae1092173498f2f1ce5c40f2ba0b9)
+
+commit 62a28b3ad8531bdc9d948064a1fa8095dcdb19e0
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Tue Feb 16 11:25:43 2016 -0800
+
+    [SPARK-13280][STREAMING] Use a better logger name for FileBasedWriteAheadLog.
+    
+    The new logger name is under the org.apache.spark namespace.
+    The detection of the caller name was also enhanced a bit to ignore
+    some common things that show up in the call stack.
+    
+    Author: Marcelo Vanzin <vanzin@cloudera.com>
+    
+    Closes #11165 from vanzin/SPARK-13280.
+    
+    (cherry picked from commit c7d00a24da317c9601a9239ac1cf185fb6647352)
+
+commit 91f3223408b3b562da46179f5ed0bcd8886c7d37
+Author: Jenkins <dev-kitchen@cloudera.com>
+Date:   Fri Feb 12 18:26:46 2016 -0800
+
+    Updating Maven version to 5.7.1-SNAPSHOT
+
+commit d2fda3d32c9f2e65e1f0114546649c8a523bcc80
+Author: Jenkins <dev-kitchen@cloudera.com>
+Date:   Fri Feb 12 17:43:32 2016 -0800
+
+    Branch for CDH5.7.x
+
+commit ecb4b3ed3bdfc4752f4454b17584b295402dd3f3
+Author: Steve Loughran <stevel@hortonworks.com>
+Date:   Thu Feb 11 21:37:53 2016 -0600
+
+    [SPARK-7889][WEBUI] HistoryServer updates UI for incomplete apps
+    
+    When the HistoryServer is showing an incomplete app, it needs to check if there is a newer version of the app available.  It does this by checking if a version of the app has been loaded with a larger *filesize*.  If so, it detaches the current UI, attaches the new one, and redirects back to the same URL to show the new UI.
+    
+    https://issues.apache.org/jira/browse/SPARK-7889
+    
+    Author: Steve Loughran <stevel@hortonworks.com>
+    Author: Imran Rashid <irashid@cloudera.com>
+    
+    Closes #11118 from squito/SPARK-7889-alternate.
+    
+    (cherry picked from commit a2c7dcf61f33fa1897c950d2d905651103c170ea)
+
+commit 8f00d5fc78fec323f9f7146cc5de88c3ca6436e2
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Thu Feb 11 09:43:04 2016 -0800
+
+    CLOUDERA-BUILD. Preview of "[SPARK-5682] Add encrypted shuffle in spark".
+    
+    This patch is using Chimera library to enable shuffle encryption support.
+
+commit 575fa11fbbef8ee8b86236da58b6432a30516534
+Author: Mark Grover <mark@apache.org>
+Date:   Thu Feb 11 09:34:06 2016 -0800
+
+    CLOUDERA-BUILD. Build spark against CDH Kafka 2.0.0
+
+commit 9ce706880356e2a16d3f788d638107d923fc8009
+Author: Nishkam Ravi <nishkamravi@gmail.com>
+Date:   Tue Jan 26 21:14:39 2016 -0800
+
+    [SPARK-12967][NETTY] Avoid NettyRpc error message during sparkContext shutdown
+    
+    If there's an RPC issue while sparkContext is alive but stopped (which would happen only when executing SparkContext.stop), log a warning instead. This is a common occurrence.
+    
+    vanzin
+    
+    Author: Nishkam Ravi <nishkamravi@gmail.com>
+    Author: nishkamravi2 <nishkamravi@gmail.com>
+    
+    Closes #10881 from nishkamravi2/master_netty.
+    
+    (cherry picked from commit bae3c9a4eb0c320999e5dbafd62692c12823e07d)
+
+commit b03c027efb662492d5add4819baf6c856bc42280
+Author: Wenchen Fan <wenchen@databricks.com>
+Date:   Wed Feb 3 16:13:23 2016 -0800
+
+    [SPARK-13101][SQL][BRANCH-1.6] nullability of array type element should not fail analysis of encoder
+    
+    nullability should only be considered as an optimization rather than part of the type system, so instead of failing analysis for mismatch nullability, we should pass analysis and add runtime null check.
+    
+    backport https://github.com/apache/spark/pull/11035 to 1.6
+    
+    Author: Wenchen Fan <wenchen@databricks.com>
+    
+    Closes #11042 from cloud-fan/branch-1.6.
+    
+    (cherry picked from commit cdfb2a1410aa799596c8b751187dbac28b2cc678)
+
+commit 78c657c76dab4622185c0b9023e1c8859153a58e
+Author: Mario Briggs <mario.briggs@in.ibm.com>
+Date:   Wed Feb 3 09:50:28 2016 -0800
+
+    [SPARK-12739][STREAMING] Details of batch in Streaming tab uses two Duration columns
+    
+    I have clearly prefix the two 'Duration' columns in 'Details of Batch' Streaming tab as 'Output Op Duration' and 'Job Duration'
+    
+    Author: Mario Briggs <mario.briggs@in.ibm.com>
+    Author: mariobriggs <mariobriggs@in.ibm.com>
+    
+    Closes #11022 from mariobriggs/spark-12739.
+    
+    (cherry picked from commit e9eb248edfa81d75f99c9afc2063e6b3d9ee7392)
+    Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+    (cherry picked from commit 5fe8796c2fa859e30cf5ba293bee8957e23163bc)
+
+commit fc6bb69ca1b6139520c427553fbdc3fdb93986b8
+Author: Adam Budde <budde@amazon.com>
+Date:   Tue Feb 2 19:35:33 2016 -0800
+
+    [SPARK-13122] Fix race condition in MemoryStore.unrollSafely()
+    
+    https://issues.apache.org/jira/browse/SPARK-13122
+    
+    A race condition can occur in MemoryStore's unrollSafely() method if two threads that
+    return the same value for currentTaskAttemptId() execute this method concurrently. This
+    change makes the operation of reading the initial amount of unroll memory used, performing
+    the unroll, and updating the associated memory maps atomic in order to avoid this race
+    condition.
+    
+    Initial proposed fix wraps all of unrollSafely() in a memoryManager.synchronized { } block. A cleaner approach might be introduce a mechanism that synchronizes based on task attempt ID. An alternative option might be to track unroll/pending unroll memory based on block ID rather than task attempt ID.
+    
+    Author: Adam Budde <budde@amazon.com>
+    
+    Closes #11012 from budde/master.
+    
+    (cherry picked from commit ff71261b651a7b289ea2312abd6075da8b838ed9)
+    Signed-off-by: Andrew Or <andrew@databricks.com>
+    
+    Conflicts:
+    	core/src/main/scala/org/apache/spark/storage/MemoryStore.scala
+    
+    (cherry picked from commit 2f8abb4afc08aa8dc4ed763bcb93ff6b1d6f0d78)
+
+commit dad031ce067afc4f443d07f4c56147232daa5028
+Author: Daoyuan Wang <daoyuan.wang@intel.com>
+Date:   Tue Feb 2 11:09:40 2016 -0800
+
+    [SPARK-13056][SQL] map column would throw NPE if value is null
+    
+    Jira:
+    https://issues.apache.org/jira/browse/SPARK-13056
+    
+    Create a map like
+    { "a": "somestring", "b": null}
+    Query like
+    SELECT col["b"] FROM t1;
+    NPE would be thrown.
+    
+    Author: Daoyuan Wang <daoyuan.wang@intel.com>
+    
+    Closes #10964 from adrian-wang/npewriter.
+    
+    (cherry picked from commit 358300c795025735c3b2f96c5447b1b227d4abc1)
+    Signed-off-by: Michael Armbrust <michael@databricks.com>
+    
+    Conflicts:
+    	sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala
+    
+    (cherry picked from commit 3c92333ee78f249dae37070d3b6558b9c92ec7f4)
+
+commit 38fbe6ed2170427bba4f88686dd83a784de8e5db
+Author: Grzegorz Chilkiewicz <grzegorz.chilkiewicz@codilime.com>
+Date:   Tue Feb 2 11:16:24 2016 -0800
+
+    [SPARK-12711][ML] ML StopWordsRemover does not protect itself from column name duplication
+    
+    Fixes problem and verifies fix by test suite.
+    Also - adds optional parameter: nullable (Boolean) to: SchemaUtils.appendColumn
+    and deduplicates SchemaUtils.appendColumn functions.
+    
+    Author: Grzegorz Chilkiewicz <grzegorz.chilkiewicz@codilime.com>
+    
+    Closes #10741 from grzegorz-chilkiewicz/master.
+    
+    (cherry picked from commit b1835d727234fdff42aa8cadd17ddcf43b0bed15)
+    Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+    (cherry picked from commit 9c0cf22f7681ae05d894ae05f6a91a9467787519)
+
+commit cf1ae7247bd70d19ddf278e0f70d9941082900b1
+Author: Gabriele Nizzoli <mail@nizzoli.net>
+Date:   Tue Feb 2 10:57:18 2016 -0800
+
+    [SPARK-13121][STREAMING] java mapWithState mishandles scala Option
+    
+    java mapwithstate with Function3 has wrong conversion of java `Optional` to scala `Option`, fixed code uses same conversion used in the mapwithstate call that uses Function4 as an input. `Optional.fromNullable(v.get)` fails if v is `None`, better to use `JavaUtils.optionToOptional(v)` instead.
+    
+    Author: Gabriele Nizzoli <mail@nizzoli.net>
+    
+    Closes #11007 from gabrielenizzoli/branch-1.6.
+    
+    (cherry picked from commit 4c28b4c8f342fde937ff77ab30f898dfe3186c03)
+
+commit 81811448ee7e633822d6c2e347cfbc17fe747b0c
+Author: Xusen Yin <yinxusen@gmail.com>
+Date:   Tue Feb 2 10:21:21 2016 -0800
+
+    [SPARK-12780][ML][PYTHON][BACKPORT] Inconsistency returning value of ML python models' properties
+    
+    Backport of [SPARK-12780] for branch-1.6
+    
+    Original PR for master: https://github.com/apache/spark/pull/10724
+    
+    This fixes StringIndexerModel.labels in pyspark.
+    
+    Author: Xusen Yin <yinxusen@gmail.com>
+    
+    Closes #10950 from jkbradley/yinxusen-spark-12780-backport.
+    
+    (cherry picked from commit 9a3d1bd09cdf4a7c2992525c203d4dac764fddb8)
+
+commit 70596af0e9d54f65fea786406fb41dca79b19d80
+Author: Michael Armbrust <michael@databricks.com>
+Date:   Tue Feb 2 10:15:40 2016 -0800
+
+    [SPARK-13094][SQL] Add encoders for seq/array of primitives
+    
+    Author: Michael Armbrust <michael@databricks.com>
+    
+    Closes #11014 from marmbrus/seqEncoders.
+    
+    (cherry picked from commit 29d92181d0c49988c387d34e4a71b1afe02c29e2)
+    Signed-off-by: Michael Armbrust <michael@databricks.com>
+    (cherry picked from commit 99594b213c941cd3ffa3a034f007e44efebdb545)
+
+commit 67ba036e8e681a3cf0f8371652c9309af01e1fd7
+Author: Michael Armbrust <michael@databricks.com>
+Date:   Tue Feb 2 16:51:07 2016 +0800
+
+    [SPARK-13087][SQL] Fix group by function for sort based aggregation
+    
+    It is not valid to call `toAttribute` on a `NamedExpression` unless we know for sure that the child produced that `NamedExpression`.  The current code worked fine when the grouping expressions were simple, but when they were a derived value this blew up at execution time.
+    
+    Author: Michael Armbrust <michael@databricks.com>
+    
+    Closes #11011 from marmbrus/groupByFunction.
+    
+    (cherry picked from commit bd8efba8f2131d951829020b4c68309a174859cf)
+
+commit 5ebc67abd86ed827d48ceb6703d6d82887cef010
+Author: Takeshi YAMAMURO <linguin.m.s@gmail.com>
+Date:   Mon Feb 1 12:13:17 2016 -0800
+
+    [SPARK-11780][SQL] Add catalyst type aliases backwards compatibility
+    
+    Changed a target at branch-1.6 from #10635.
+    
+    Author: Takeshi YAMAMURO <linguin.m.s@gmail.com>
+    
+    Closes #10915 from maropu/pr9935-v3.
+    
+    (cherry picked from commit 70fcbf68e412f6549ba6c2db86f7ef4518d05fe1)
+
+commit b1550680ce15e04420b885f04b99a35303823558
+Author: gatorsmile <gatorsmile@gmail.com>
+Date:   Mon Feb 1 11:22:02 2016 -0800
+
+    [SPARK-12989][SQL] Delaying Alias Cleanup after ExtractWindowExpressions
+    
+    JIRA: https://issues.apache.org/jira/browse/SPARK-12989
+    
+    In the rule `ExtractWindowExpressions`, we simply replace alias by the corresponding attribute. However, this will cause an issue exposed by the following case:
+    
+    ```scala
+    val data = Seq(("a", "b", "c", 3), ("c", "b", "a", 3)).toDF("A", "B", "C", "num")
+      .withColumn("Data", struct("A", "B", "C"))
+      .drop("A")
+      .drop("B")
+      .drop("C")
+    
+    val winSpec = Window.partitionBy("Data.A", "Data.B").orderBy($"num".desc)
+    data.select($"*", max("num").over(winSpec) as "max").explain(true)
+    ```
+    In this case, both `Data.A` and `Data.B` are `alias` in `WindowSpecDefinition`. If we replace these alias expression by their alias names, we are unable to know what they are since they will not be put in `missingExpr` too.
+    
+    Author: gatorsmile <gatorsmile@gmail.com>
+    Author: xiaoli <lixiao1983@gmail.com>
+    Author: Xiao Li <xiaoli@Xiaos-MacBook-Pro.local>
+    
+    Closes #10963 from gatorsmile/seletStarAfterColDrop.
+    
+    (cherry picked from commit 33c8a490f7f64320c53530a57bd8d34916e3607c)
+    Signed-off-by: Michael Armbrust <michael@databricks.com>
+    (cherry picked from commit 9a5b25d0f8543e24b4d00497399790930c01246f)
+
+commit c516fbac19e13904e3d4a6bf43c4fb410af987f4
+Author: Kevin Yu <qyu@us.ibm.com>
+Date:   Mon Dec 28 11:58:33 2015 -0800
+
+    [SPARK-12231][SQL] create a combineFilters' projection when we call buildPartitionedTableScan
+    
+    Hello Michael & All:
+    
+    We have some issues to submit the new codes in the other PR(#10299), so we closed that PR and open this one with the fix.
+    
+    The reason for the previous failure is that the projection for the scan when there is a filter that is not pushed down (the "left-over" filter) could be different, in elements or ordering, from the original projection.
+    
+    With this new codes, the approach to solve this problem is:
+    
+    Insert a new Project if the "left-over" filter is nonempty and (the original projection is not empty and the projection for the scan has more than one elements which could otherwise cause different ordering in projection).
+    
+    We create 3 test cases to cover the otherwise failure cases.
+    
+    Author: Kevin Yu <qyu@us.ibm.com>
+    
+    Closes #10388 from kevinyu98/spark-12231.
+    
+    (cherry picked from commit fd50df413fbb3b7528cdff311cc040a6212340b9)
+    Signed-off-by: Cheng Lian <lian@databricks.com>
+    (cherry picked from commit ddb9633043e82fb2a34c7e0e29b487f635c3c744)
+
+commit 42338ce04708df8f50172d3fad9b6f18826720e8
+Author: Andrew Or <andrew@databricks.com>
+Date:   Fri Jan 29 18:00:49 2016 -0800
+
+    [SPARK-13088] Fix DAG viz in latest version of chrome
+    
+    Apparently chrome removed `SVGElement.prototype.getTransformToElement`, which is used by our JS library dagre-d3 when creating edges. The real diff can be found here: https://github.com/andrewor14/dagre-d3/commit/7d6c0002e4c74b82a02c5917876576f71e215590, which is taken from the fix in the main repo: https://github.com/cpettitt/dagre-d3/commit/1ef067f1c6ad2e0980f6f0ca471bce998784b7b2
+    
+    Upstream issue: https://github.com/cpettitt/dagre-d3/issues/202
+    
+    Author: Andrew Or <andrew@databricks.com>
+    
+    Closes #10986 from andrewor14/fix-dag-viz.
+    
+    (cherry picked from commit 70e69fc4dd619654f5d24b8b84f6a94f7705c59b)
+    Signed-off-by: Andrew Or <andrew@databricks.com>
+    (cherry picked from commit bb01cbe9b2c0f64eef34f6a59b5bf7be55c73012)
+
+commit c110729eb7ed15c5e63664d6b6b92c6d8aaa3f50
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Fri Jan 29 13:53:11 2016 -0800
+
+    [SPARK-13082][PYSPARK] Backport the fix of 'read.json(rdd)' in #10559 to branch-1.6
+    
+    SPARK-13082 actually fixed by  #10559. However, it's a big PR and not backported to 1.6. This PR just backported the fix of 'read.json(rdd)' to branch-1.6.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10988 from zsxwing/json-rdd.
+    
+    (cherry picked from commit 84dab7260e9a33586ad4002cd826a5ae7c8c4141)
+
+commit d6113a967f5b6898958b4ec7b857919381d04fb4
+Author: Jason Lee <cjlee@us.ibm.com>
+Date:   Wed Jan 27 09:55:10 2016 -0800
+
+    [SPARK-10847][SQL][PYSPARK] Pyspark - DataFrame - Optional Metadata with `None` triggers cryptic failure
+    
+    The error message is now changed from "Do not support type class scala.Tuple2." to "Do not support type class org.json4s.JsonAST$JNull$" to be more informative about what is not supported. Also, StructType metadata now handles JNull correctly, i.e., {'a': None}. test_metadata_null is added to tests.py to show the fix works.
+    
+    Author: Jason Lee <cjlee@us.ibm.com>
+    
+    Closes #8969 from jasoncl/SPARK-10847.
+    
+    (cherry picked from commit edd473751b59b55fa3daede5ed7bc19ea8bd7170)
+    Signed-off-by: Yin Huai <yhuai@databricks.com>
+    (cherry picked from commit 96e32db5cbd1ef32f65206357bfb8d9f70a06d0a)
+
+commit 1557e395bbd654694229be9c207f265ea80c5791
+Author: Xusen Yin <yinxusen@gmail.com>
+Date:   Wed Jan 27 00:32:52 2016 -0800
+
+    [SPARK-12834][ML][PYTHON][BACKPORT] Change ser/de of JavaArray and JavaList
+    
+    Backport of SPARK-12834 for branch-1.6
+    
+    Original PR: https://github.com/apache/spark/pull/10772
+    
+    Original commit message:
+    We use `SerDe.dumps()` to serialize `JavaArray` and `JavaList` in `PythonMLLibAPI`, then deserialize them with `PickleSerializer` in Python side. However, there is no need to transform them in such an inefficient way. Instead of it, we can use type conversion to convert them, e.g. `list(JavaArray)` or `list(JavaList)`. What's more, there is an issue to Ser/De Scala Array as I said in https://issues.apache.org/jira/browse/SPARK-12780
+    
+    Author: Xusen Yin <yinxusen@gmail.com>
+    
+    Closes #10941 from jkbradley/yinxusen-SPARK-12834-1.6.
+    
+    (cherry picked from commit 17d1071ce8945d056da145f64797d1d10529afc1)
+
+commit d2696a09962e5ffeaa3ccdac6a21c57014316f27
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Thu Jan 7 17:37:46 2016 -0800
+
+    [SPARK-12507][STREAMING][DOCUMENT] Expose closeFileAfterWrite and allowBatching configurations for Streaming
+    
+    /cc tdas brkyvz
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10453 from zsxwing/streaming-conf.
+    
+    (cherry picked from commit c94199e977279d9b4658297e8108b46bdf30157b)
+    Signed-off-by: Tathagata Das <tathagata.das1565@gmail.com>
+    (cherry picked from commit a7c36362fb9532183b7b6a0ad5020f02b816a9b3)
+
+commit e79cb8fec8b81e13f8fc26cf60eab29f843537eb
+Author: Nong Li <nong@databricks.com>
+Date:   Mon Jan 4 10:37:56 2016 -0800
+
+    [SPARK-12486] Worker should kill the executors more forcefully if possible.
+    
+    This patch updates the ExecutorRunner's terminate path to use the new java 8 API
+    to terminate processes more forcefully if possible. If the executor is unhealthy,
+    it would previously ignore the destroy() call. Presumably, the new java API was
+    added to handle cases like this.
+    
+    We could update the termination path in the future to use OS specific commands
+    for older java versions.
+    
+    Author: Nong Li <nong@databricks.com>
+    
+    Closes #10438 from nongli/spark-12486-executors.
+    
+    (cherry picked from commit 8f659393b270c46e940c4e98af2d996bd4fd6442)
+    Signed-off-by: Andrew Or <andrew@databricks.com>
+    (cherry picked from commit cd02038198fa57da816211d7bc65921ff9f1e9bb)
+
+commit 5bf0bf3994f86d65c50be6db7966976b0eb44744
+Author: Liang-Chi Hsieh <viirya@gmail.com>
+Date:   Tue Jan 26 11:36:00 2016 +0000
+
+    [SPARK-12961][CORE] Prevent snappy-java memory leak
+    
+    JIRA: https://issues.apache.org/jira/browse/SPARK-12961
+    
+    To prevent memory leak in snappy-java, just call the method once and cache the result. After the library releases new version, we can remove this object.
+    
+    JoshRosen
+    
+    Author: Liang-Chi Hsieh <viirya@gmail.com>
+    
+    Closes #10875 from viirya/prevent-snappy-memory-leak.
+    
+    (cherry picked from commit 5936bf9fa85ccf7f0216145356140161c2801682)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 572bc399952bae322ed6909290996b103688fd3a)
+
+commit cbd908a8394c427980e93d3c7537011856100c6b
+Author: jerryshao <sshao@hortonworks.com>
+Date:   Wed Dec 9 09:50:43 2015 -0800
+
+    [SPARK-10582][YARN][CORE] Fix AM failure situation for dynamic allocation
+    
+    Because of AM failure, the target executor number between driver and AM will be different, which will lead to unexpected behavior in dynamic allocation. So when AM is re-registered with driver, state in `ExecutorAllocationManager` and `CoarseGrainedSchedulerBacked` should be reset.
+    
+    This issue is originally addressed in #8737 , here re-opened again. Thanks a lot KaiXinXiaoLei for finding this issue.
+    
+    andrewor14 and vanzin would you please help to review this, thanks a lot.
+    
+    Author: jerryshao <sshao@hortonworks.com>
+    
+    Closes #9963 from jerryshao/SPARK-10582.
+    
+    (cherry picked from commit 6900f0173790ad2fa4c79a426bd2dec2d149daa2)
+
+commit 27f9b2abefde5d241f6d83c0f2265fa3b9419669
+Author: Andy Grove <andygrove73@gmail.com>
+Date:   Mon Jan 25 09:22:10 2016 +0000
+
+    [SPARK-12932][JAVA API] improved error message for java type inference failure
+    
+    Author: Andy Grove <andygrove73@gmail.com>
+    
+    Closes #10865 from andygrove/SPARK-12932.
+    
+    (cherry picked from commit d8e480521e362bc6bc5d8ebcea9b2d50f72a71b9)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 88114d3d87f41827ffa9f683edce5e85fdb724ff)
+
+commit 9bf5d9abf4bbc5edfb664ff46b08a072a84e046b
+Author: Bryan Cutler <cutlerb@gmail.com>
+Date:   Fri Jan 8 11:08:45 2016 -0800
+
+    [SPARK-12701][CORE] FileAppender should use join to ensure writing thread completion
+    
+    Changed Logging FileAppender to use join in `awaitTermination` to ensure that thread is properly finished before returning.
+    
+    Author: Bryan Cutler <cutlerb@gmail.com>
+    
+    Closes #10654 from BryanCutler/fileAppender-join-thread-SPARK-12701.
+    
+    (cherry picked from commit ea104b8f1ce8aa109d1b16b696a61a47df6283b2)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 773366818bbdd479fcb59b6fb7fccf28da13a303)
+
+commit ddbf85c0bd924b90c0cd4aaad3554692b87e63fd
+Author: RJ Nowling <rnowling@gmail.com>
+Date:   Tue Jan 5 15:05:04 2016 -0800
+
+    [SPARK-12450][MLLIB] Un-persist broadcasted variables in KMeans
+    
+    SPARK-12450 . Un-persist broadcasted variables in KMeans.
+    
+    Author: RJ Nowling <rnowling@gmail.com>
+    
+    Closes #10415 from rnowling/spark-12450.
+    
+    (cherry picked from commit 78015a8b7cc316343e302eeed6fe30af9f2961e8)
+    Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+    (cherry picked from commit 0afad6678431846a6eebda8d5891da9115884915)
+
+commit 49da41f915bc9ef47fd6f1384264ae65a3a6be06
+Author: Nong Li <nong@databricks.com>
+Date:   Fri Dec 18 16:05:18 2015 -0800
+
+    [SPARK-12411][CORE] Decrease executor heartbeat timeout to match heartbeat interval
+    
+    Previously, the rpc timeout was the default network timeout, which is the same value
+    the driver uses to determine dead executors. This means if there is a network issue,
+    the executor is determined dead after one heartbeat attempt. There is a separate config
+    for the heartbeat interval which is a better value to use for the heartbeat RPC. With
+    this change, the executor will make multiple heartbeat attempts even with RPC issues.
+    
+    Author: Nong Li <nong@databricks.com>
+    
+    Closes #10365 from nongli/spark-12411.
+    
+    (cherry picked from commit b49856ae5983aca8ed7df2f478fc5f399ec34ce8)
+
+commit 6e4fb656ac7f7d6a6586eb6a4057ff18116ee758
+Author: Jeff Zhang <zjffdu@apache.org>
+Date:   Sun Jan 24 12:29:26 2016 -0800
+
+    [SPARK-12120][PYSPARK] Improve exception message when failing to init…
+    
+    …ialize HiveContext in PySpark
+    
+    davies Mind to review ?
+    
+    This is the error message after this PR
+    
+    ```
+    15/12/03 16:59:53 WARN ObjectStore: Failed to get database default, returning NoSuchObjectException
+    /Users/jzhang/github/spark/python/pyspark/sql/context.py:689: UserWarning: You must build Spark with Hive. Export 'SPARK_HIVE=true' and run build/sbt assembly
+      warnings.warn("You must build Spark with Hive. "
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "/Users/jzhang/github/spark/python/pyspark/sql/context.py", line 663, in read
+        return DataFrameReader(self)
+      File "/Users/jzhang/github/spark/python/pyspark/sql/readwriter.py", line 56, in __init__
+        self._jreader = sqlContext._ssql_ctx.read()
+      File "/Users/jzhang/github/spark/python/pyspark/sql/context.py", line 692, in _ssql_ctx
+        raise e
+    py4j.protocol.Py4JJavaError: An error occurred while calling None.org.apache.spark.sql.hive.HiveContext.
+    : java.lang.RuntimeException: java.net.ConnectException: Call From jzhangMBPr.local/127.0.0.1 to 0.0.0.0:9000 failed on connection exception: java.net.ConnectException: Connection refused; For more details see:  http://wiki.apache.org/hadoop/ConnectionRefused
+    	at org.apache.hadoop.hive.ql.session.SessionState.start(SessionState.java:522)
+    	at org.apache.spark.sql.hive.client.ClientWrapper.<init>(ClientWrapper.scala:194)
+    	at org.apache.spark.sql.hive.client.IsolatedClientLoader.createClient(IsolatedClientLoader.scala:238)
+    	at org.apache.spark.sql.hive.HiveContext.executionHive$lzycompute(HiveContext.scala:218)
+    	at org.apache.spark.sql.hive.HiveContext.executionHive(HiveContext.scala:208)
+    	at org.apache.spark.sql.hive.HiveContext.functionRegistry$lzycompute(HiveContext.scala:462)
+    	at org.apache.spark.sql.hive.HiveContext.functionRegistry(HiveContext.scala:461)
+    	at org.apache.spark.sql.UDFRegistration.<init>(UDFRegistration.scala:40)
+    	at org.apache.spark.sql.SQLContext.<init>(SQLContext.scala:330)
+    	at org.apache.spark.sql.hive.HiveContext.<init>(HiveContext.scala:90)
+    	at org.apache.spark.sql.hive.HiveContext.<init>(HiveContext.scala:101)
+    	at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+    	at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
+    	at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+    	at java.lang.reflect.Constructor.newInstance(Constructor.java:526)
+    	at py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:234)
+    	at py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:381)
+    	at py4j.Gateway.invoke(Gateway.java:214)
+    	at py4j.commands.ConstructorCommand.invokeConstructor(ConstructorCommand.java:79)
+    	at py4j.commands.ConstructorCommand.execute(ConstructorCommand.java:68)
+    	at py4j.GatewayConnection.run(GatewayConnection.java:209)
+    	at java.lang.Thread.run(Thread.java:745)
+    ```
+    
+    Author: Jeff Zhang <zjffdu@apache.org>
+    
+    Closes #10126 from zjffdu/SPARK-12120.
+    
+    (cherry picked from commit e789b1d2c1eab6187f54424ed92697ca200c3101)
+    Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+    (cherry picked from commit f913f7ea080bc90bd967724e583f42b0a48075d9)
+
+commit c8c35b8df7edb32eea43354bf2af390f46cbd10f
+Author: Sean Owen <sowen@cloudera.com>
+Date:   Tue Jan 12 12:13:32 2016 +0000
+
+    [SPARK-5273][MLLIB][DOCS] Improve documentation examples for LinearRegression
+    
+    Use a much smaller step size in LinearRegressionWithSGD MLlib examples to achieve a reasonable RMSE.
+    
+    Our training folks hit this exact same issue when concocting an example and had the same solution.
+    
+    Author: Sean Owen <sowen@cloudera.com>
+    
+    Closes #10675 from srowen/SPARK-5273.
+    
+    (cherry picked from commit 9c7f34af37ef328149c1d66b4689d80a1589e1cc)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 4c67d55c0ccf086e91d1755b62c8526f2ff51f21)
+
+commit bf3123c9b92429d04c1bffd3338f9a0632192442
+Author: Xin Ren <iamshrek@126.com>
+Date:   Tue Dec 8 11:44:51 2015 -0600
+
+    [SPARK-11155][WEB UI] Stage summary json should include stage duration
+    
+    The json endpoint for stages doesn't include information on the stage duration that is present in the UI. This looks like a simple oversight, they should be included. eg., the metrics should be included at api/v1/applications/<appId>/stages.
+    
+    Metrics I've added are: submissionTime, firstTaskLaunchedTime and completionTime
+    
+    Author: Xin Ren <iamshrek@126.com>
+    
+    Closes #10107 from keypointt/SPARK-11155.
+    
+    (cherry picked from commit 6cb06e8711fd6ac10c57faeb94bc323cae1cef27)
+
+commit 23a35bdbddcfff479a47310ffd9b9831f8340dd7
+Author: CodingCat <zhunansjtu@gmail.com>
+Date:   Tue Dec 15 18:21:00 2015 -0800
+
+    [SPARK-9516][UI] Improvement of Thread Dump Page
+    
+    https://issues.apache.org/jira/browse/SPARK-9516
+    
+    - [x] new look of Thread Dump Page
+    
+    - [x] click column title to sort
+    
+    - [x] grep
+    
+    - [x] search as you type
+    
+    squito JoshRosen It's ready for the review now
+    
+    Author: CodingCat <zhunansjtu@gmail.com>
+    
+    Closes #7910 from CodingCat/SPARK-9516.
+    
+    (cherry picked from commit a63d9edcfb8a714a17492517927aa114dea8fea0)
+
+commit 29e79113a96a524169680f2903810444388e63e9
+Author: Nong Li <nong@databricks.com>
+Date:   Tue Dec 22 13:27:28 2015 -0800
+
+    [SPARK-12471][CORE] Spark daemons will log their pid on start up.
+    
+    Author: Nong Li <nong@databricks.com>
+    
+    Closes #10422 from nongli/12471-pids.
+    
+    (cherry picked from commit 575a1327976202614a6d3268918ae8dad49fcd72)
+
+commit efe46e5cab3eefa6af76d73f020d5c37f83e1c41
+Author: Mark Grover <mark@apache.org>
+Date:   Tue Feb 9 13:44:24 2016 -0800
+
+    CLOUDERA-BUILD. Revert Build spark against CDH Kafka 2.0.0"
+    
+    This reverts commit 47e752dea3d499bcd97194c6b48a928f011e2ede.
+
+commit 47e752dea3d499bcd97194c6b48a928f011e2ede
+Author: Mark Grover <mark@apache.org>
+Date:   Tue Feb 9 13:12:04 2016 -0800
+
+    CLOUDERA-BUILD. Build spark against CDH Kafka 2.0.0
+
+commit c3a3512dc9a86e0581f796dce46f6ec2d281eb17
+Author: Josh Rosen <joshrosen@databricks.com>
+Date:   Sat Dec 5 08:15:30 2015 +0800
+
+    [SPARK-12112][BUILD] Upgrade to SBT 0.13.9
+    
+    We should upgrade to SBT 0.13.9, since this is a requirement in order to use SBT's new Maven-style resolution features (which will be done in a separate patch, because it's blocked by some binary compatibility issues in the POM reader plugin).
+    
+    I also upgraded Scalastyle to version 0.8.0, which was necessary in order to fix a Scala 2.10.5 compatibility issue (see https://github.com/scalastyle/scalastyle/issues/156). The newer Scalastyle is slightly stricter about whitespace surrounding tokens, so I fixed the new style violations.
+    
+    Author: Josh Rosen <joshrosen@databricks.com>
+    
+    Closes #10112 from JoshRosen/upgrade-to-sbt-0.13.9.
+    
+    (cherry picked from commit b7204e1d41271d2e8443484371770936664350b1)
+
+commit f0832fd1f36aa7fc4f22d5e069ca489131630bcc
+Author: Wenchen Fan <wenchen@databricks.com>
+Date:   Mon Dec 28 11:45:44 2015 -0800
+
+    [SPARK-12321][SPARK-12696][HOT-FIX] bypass hive test when parse logical plan to json
+    
+    https://github.com/apache/spark/pull/10311 introduces some rare, non-deterministic flakiness for hive udf tests, see https://github.com/apache/spark/pull/10311#issuecomment-166548851
+    
+    I can't reproduce it locally, and may need more time to investigate, a quick solution is: bypass hive tests for json serialization.
+    
+    Author: Wenchen Fan <wenchen@databricks.com>
+    
+    Closes #10430 from cloud-fan/hot-fix.
+    
+    (cherry picked from commit 8543997f2daa60dfa0509f149fab207de98145a0)
+    Signed-off-by: Michael Armbrust <michael@databricks.com>
+    (cherry picked from commit f71e5cc123ea84341de25e5d07f838ca2d9fe3c0)
+
+commit 46796c71306b3314bc963ad66f702b48aecb9e34
+Author: Michael Allman <michael@videoamp.com>
+Date:   Mon Jan 25 09:51:41 2016 +0000
+
+    [SPARK-12755][CORE] Stop the event logger before the DAG scheduler
+    
+    [SPARK-12755][CORE] Stop the event logger before the DAG scheduler to avoid a race condition where the standalone master attempts to build the app's history UI before the event log is stopped.
+    
+    This contribution is my original work, and I license this work to the Spark project under the project's open source license.
+    
+    Author: Michael Allman <michael@videoamp.com>
+    
+    Closes #10700 from mallman/stop_event_logger_first.
+    
+    (cherry picked from commit 4ee8191e57cb823a23ceca17908af86e70354554)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit b40e58cf251c22c6b0ba383cc7e67ef6b07d8ec5)
+
+commit 9370ef66bdfd3a04d38b4a27428ef2fd2254b7aa
+Author: Cheng Lian <lian@databricks.com>
+Date:   Sun Jan 24 19:40:34 2016 -0800
+
+    [SPARK-12624][PYSPARK] Checks row length when converting Java arrays to Python rows
+    
+    When actual row length doesn't conform to specified schema field length, we should give a better error message instead of throwing an unintuitive `ArrayOutOfBoundsException`.
+    
+    Author: Cheng Lian <lian@databricks.com>
+    
+    Closes #10886 from liancheng/spark-12624.
+    
+    (cherry picked from commit 3327fd28170b549516fee1972dc6f4c32541591b)
+    Signed-off-by: Yin Huai <yhuai@databricks.com>
+    (cherry picked from commit 88614dd0f9f25ec2045940b030d757079913ac26)
+
+commit c1fb4fbdeb79e7b4a13856219e7f1b58d281bc5c
+Author: Sean Owen <sowen@cloudera.com>
+Date:   Sat Jan 23 11:45:12 2016 +0000
+
+    [SPARK-12760][DOCS] inaccurate description for difference between local vs cluster mode in closure handling
+    
+    Clarify that modifying a driver local variable won't have the desired effect in cluster modes, and may or may not work as intended in local mode
+    
+    Author: Sean Owen <sowen@cloudera.com>
+    
+    Closes #10866 from srowen/SPARK-12760.
+    
+    (cherry picked from commit aca2a0165405b9eba27ac5e4739e36a618b96676)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit f13a3d1f73d01bf167f3736b66222b1cb8f7a01b)
+
+commit 6e3f1c60d97f95ba1c34eae385b42cb0db649d8c
+Author: Mortada Mehyar <mortada.mehyar@gmail.com>
+Date:   Sat Jan 23 11:36:33 2016 +0000
+
+    [SPARK-12760][DOCS] invalid lambda expression in python example for …
+    
+    …local vs cluster
+    
+    srowen thanks for the PR at https://github.com/apache/spark/pull/10866! sorry it took me a while.
+    
+    This is related to https://github.com/apache/spark/pull/10866, basically the assignment in the lambda expression in the python example is actually invalid
+    
+    ```
+    In [1]: data = [1, 2, 3, 4, 5]
+    In [2]: counter = 0
+    In [3]: rdd = sc.parallelize(data)
+    In [4]: rdd.foreach(lambda x: counter += x)
+      File "<ipython-input-4-fcb86c182bad>", line 1
+        rdd.foreach(lambda x: counter += x)
+                                       ^
+    SyntaxError: invalid syntax
+    ```
+    
+    Author: Mortada Mehyar <mortada.mehyar@gmail.com>
+    
+    Closes #10867 from mortada/doc_python_fix.
+    
+    (cherry picked from commit 56f57f894eafeda48ce118eec16ecb88dbd1b9dc)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit e8ae242f925ab747aa5a7bba581da66195e31110)
+
+commit 23e9876c3ca57a1570f00feb1ddd92caa30f742e
+Author: Alex Bozarth <ajbozart@us.ibm.com>
+Date:   Sat Jan 23 20:19:58 2016 +0900
+
+    [SPARK-12859][STREAMING][WEB UI] Names of input streams with receivers don't fit in Streaming page
+    
+    Added CSS style to force names of input streams with receivers to wrap
+    
+    Author: Alex Bozarth <ajbozart@us.ibm.com>
+    
+    Closes #10873 from ajbozarth/spark12859.
+    
+    (cherry picked from commit 358a33bbff549826b2336c317afc7274bdd30fdb)
+    Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+    (cherry picked from commit dca238af7ef39e0d1951b72819f12092eae1964a)
+
+commit 1a7fce2fc7fa08aaf2d05ac7931868d5bdf96a3c
+Author: Liang-Chi Hsieh <viirya@gmail.com>
+Date:   Thu Jan 21 18:55:28 2016 -0800
+
+    [SPARK-12747][SQL] Use correct type name for Postgres JDBC's real array
+    
+    https://issues.apache.org/jira/browse/SPARK-12747
+    
+    Postgres JDBC driver uses "FLOAT4" or "FLOAT8" not "real".
+    
+    Author: Liang-Chi Hsieh <viirya@gmail.com>
+    
+    Closes #10695 from viirya/fix-postgres-jdbc.
+    
+    (cherry picked from commit 55c7dd031b8a58976922e469626469aa4aff1391)
+    Signed-off-by: Reynold Xin <rxin@databricks.com>
+    (cherry picked from commit b5d7dbeb3110a11716f6642829f4ea14868ccc8a)
+
+commit e1a7d01d47eaa1e8bff20fbfa0d9ce1c38bce7f9
+Author: Josh Rosen <joshrosen@databricks.com>
+Date:   Wed Jan 20 16:10:28 2016 -0800
+
+    [SPARK-12921] Use SparkHadoopUtil reflection in SpecificParquetRecordReaderBase
+    
+    It looks like there's one place left in the codebase, SpecificParquetRecordReaderBase, where we didn't use SparkHadoopUtil's reflective accesses of TaskAttemptContext methods, which could create problems when using a single Spark artifact with both Hadoop 1.x and 2.x.
+    
+    Author: Josh Rosen <joshrosen@databricks.com>
+    
+    Closes #10843 from JoshRosen/SPARK-12921.
+    
+    (cherry picked from commit 40fa21856aded0e8b0852cdc2d8f8bc577891908)
+
+commit 29ea39c246118c19d4d75476df532430fa8e2274
+Author: Wenchen Fan <wenchen@databricks.com>
+Date:   Mon Jan 18 21:20:19 2016 -0800
+
+    [SPARK-12841][SQL][BRANCH-1.6] fix cast in filter
+    
+    In SPARK-10743 we wrap cast with `UnresolvedAlias` to give `Cast` a better alias if possible. However, for cases like filter, the `UnresolvedAlias` can't be resolved and actually we don't need a better alias for this case. This PR move the cast wrapping logic to `Column.named` so that we will only do it when we need a alias name.
+    
+    backport https://github.com/apache/spark/pull/10781 to 1.6
+    
+    Author: Wenchen Fan <wenchen@databricks.com>
+    
+    Closes #10819 from cloud-fan/bug.
+    
+    (cherry picked from commit 68265ac23e20305474daef14bbcf874308ca8f5a)
+
+commit 6e58725ef8057b1524f1bff513f883f8e20e71de
+Author: Eric Liang <ekl@databricks.com>
+Date:   Mon Jan 18 12:50:58 2016 -0800
+
+    [SPARK-12346][ML] Missing attribute names in GLM for vector-type features
+    
+    Currently `summary()` fails on a GLM model fitted over a vector feature missing ML attrs, since the output feature attrs will also have no name. We can avoid this situation by forcing `VectorAssembler` to make up suitable names when inputs are missing names.
+    
+    cc mengxr
+    
+    Author: Eric Liang <ekl@databricks.com>
+    
+    Closes #10323 from ericl/spark-12346.
+    
+    (cherry picked from commit 5e492e9d5bc0992cbcffe64a9aaf3b334b173d2c)
+    Signed-off-by: Xiangrui Meng <meng@databricks.com>
+    (cherry picked from commit 8c2b67f55416562a0f1fafeefb073f79701c9cc9)
+
+commit eab39f29e3405dcb35d28d3ddead150d14e9ecff
+Author: Dilip Biswal <dbiswal@us.ibm.com>
+Date:   Mon Jan 18 10:28:01 2016 -0800
+
+    [SPARK-12558][FOLLOW-UP] AnalysisException when multiple functions applied in GROUP BY clause
+    
+    Addresses the comments from Yin.
+    https://github.com/apache/spark/pull/10520
+    
+    Author: Dilip Biswal <dbiswal@us.ibm.com>
+    
+    Closes #10758 from dilipbiswal/spark-12558-followup.
+    
+    (cherry picked from commit db9a860589bfc4f80d6cdf174a577ca538b82e6d)
+    Signed-off-by: Yin Huai <yhuai@databricks.com>
+    
+    Conflicts:
+    	sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/HiveUDFSuite.scala
+    
+    (cherry picked from commit 53184ce779d85022e49651e631df907dc75af045)
+
+commit e1abd2867f6d0a2f6eae3d56e2ea656f1abac2ff
+Author: Koyo Yoshida <yoshidakuy@oss.nttdata.co.jp>
+Date:   Fri Jan 15 13:32:47 2016 +0900
+
+    [SPARK-12708][UI] Sorting task error in Stages Page when yarn mode.
+    
+    If sort column contains slash(e.g. "Executor ID / Host") when yarn mode,sort fail with following message.
+    
+    ![spark-12708](https://cloud.githubusercontent.com/assets/6679275/12193320/80814f8c-b62a-11e5-9914-7bf3907029df.png)
+    
+    Ｉt's similar to SPARK-4313 .
+    
+    Author: root <root@R520T1.(none)>
+    Author: Koyo Yoshida <koyo0615@gmail.com>
+    
+    Closes #10663 from yoshidakuy/SPARK-12708.
+    
+    (cherry picked from commit 32cca933546b4aaf0fc040b9cfd1a5968171b423)
+    Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+    (cherry picked from commit d23e57d02977f83c099ef24dda52c7673dcc9ad7)
+
+commit 43b86042c63dc3da2a825d3026088d0a30ef6773
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Thu Jan 14 09:50:57 2016 -0800
+
+    [SPARK-12784][UI] Fix Spark UI IndexOutOfBoundsException with dynamic allocation
+    
+    Add `listener.synchronized` to get `storageStatusList` and `execInfo` atomically.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10728 from zsxwing/SPARK-12784.
+    
+    (cherry picked from commit 501e99ef0fbd2f2165095548fe67a3447ccbfc91)
+    Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+    (cherry picked from commit d1855adb5eab7bf42604e949fa6c9687e91bade1)
+
+commit 00362b56c46986300c7800d854e155928eff0b52
+Author: Bryan Cutler <cutlerb@gmail.com>
+Date:   Thu Jan 14 10:59:02 2016 +0000
+
+    [SPARK-9844][CORE] File appender race condition during shutdown
+    
+    When an Executor process is destroyed, the FileAppender that is asynchronously reading the stderr stream of the process can throw an IOException during read because the stream is closed.  Before the ExecutorRunner destroys the process, the FileAppender thread is flagged to stop.  This PR wraps the inputStream.read call of the FileAppender in a try/catch block so that if an IOException is thrown and the thread has been flagged to stop, it will safely ignore the exception.  Additionally, the FileAppender thread was changed to use Utils.tryWithSafeFinally to better log any exception that do occur.  Added unit tests to verify a IOException is thrown and logged if FileAppender is not flagged to stop, and that no IOException when the flag is set.
+    
+    Author: Bryan Cutler <cutlerb@gmail.com>
+    
+    Closes #10714 from BryanCutler/file-appender-read-ioexception-SPARK-9844.
+    
+    (cherry picked from commit 56cdbd654d54bf07a063a03a5c34c4165818eeb2)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 0c67993cf25c681611c55fd056808beee048129b)
+
+commit 82597d7cf068656954a634712e1a4ccbac232b8b
+Author: Yuhao Yang <hhbyyh@gmail.com>
+Date:   Wed Jan 13 17:43:27 2016 -0800
+
+    [SPARK-12026][MLLIB] ChiSqTest gets slower and slower over time when number of features is large
+    
+    jira: https://issues.apache.org/jira/browse/SPARK-12026
+    
+    The issue is valid as features.toArray.view.zipWithIndex.slice(startCol, endCol) becomes slower as startCol gets larger.
+    
+    I tested on local and the change can improve the performance and the running time was stable.
+    
+    Author: Yuhao Yang <hhbyyh@gmail.com>
+    
+    Closes #10146 from hhbyyh/chiSq.
+    
+    (cherry picked from commit 021dafc6a05a31dc22c9f9110dedb47a1f913087)
+    Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+    (cherry picked from commit a490787daa5ec11a5e30bc0df31f81edd54ccc6a)
+
+commit 58316d9818dcdd956c7ff8a63c58fc962f6ed32d
+Author: Carson Wang <carson.wang@intel.com>
+Date:   Wed Jan 13 13:28:39 2016 -0800
+
+    [SPARK-12690][CORE] Fix NPE in UnsafeInMemorySorter.free()
+    
+    I hit the exception below. The `UnsafeKVExternalSorter` does pass `null` as the consumer when creating an `UnsafeInMemorySorter`. Normally the NPE doesn't occur because the `inMemSorter` is set to null later and the `free()` method is not called. It happens when there is another exception like OOM thrown before setting `inMemSorter` to null. Anyway, we can add the null check to avoid it.
+    
+    ```
+    ERROR spark.TaskContextImpl: Error in TaskCompletionListener
+    java.lang.NullPointerException
+            at org.apache.spark.util.collection.unsafe.sort.UnsafeInMemorySorter.free(UnsafeInMemorySorter.java:110)
+            at org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter.cleanupResources(UnsafeExternalSorter.java:288)
+            at org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter$1.onTaskCompletion(UnsafeExternalSorter.java:141)
+            at org.apache.spark.TaskContextImpl$$anonfun$markTaskCompleted$1.apply(TaskContextImpl.scala:79)
+            at org.apache.spark.TaskContextImpl$$anonfun$markTaskCompleted$1.apply(TaskContextImpl.scala:77)
+            at scala.collection.mutable.ResizableArray$class.foreach(ResizableArray.scala:59)
+            at scala.collection.mutable.ArrayBuffer.foreach(ArrayBuffer.scala:47)
+            at org.apache.spark.TaskContextImpl.markTaskCompleted(TaskContextImpl.scala:77)
+            at org.apache.spark.scheduler.Task.run(Task.scala:91)
+            at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:213)
+            at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+            at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+            at java.lang.Thread.run(Thread.java:722)
+    ```
+    
+    Author: Carson Wang <carson.wang@intel.com>
+    
+    Closes #10637 from carsonwang/FixNPE.
+    
+    (cherry picked from commit eabc7b8ee7e809bab05361ed154f87bff467bd88)
+    Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+    (cherry picked from commit 26f13faa981a51046ed1f16b9c3ee42ac5f6b6da)
+
+commit 27c086e365938555207d87ce2b01bef578371be9
+Author: Erik Selin <erik.selin@gmail.com>
+Date:   Wed Jan 13 12:21:45 2016 -0800
+
+    [SPARK-12268][PYSPARK] Make pyspark shell pythonstartup work under python3
+    
+    This replaces the `execfile` used for running custom python shell scripts
+    with explicit open, compile and exec (as recommended by 2to3). The reason
+    for this change is to make the pythonstartup option compatible with python3.
+    
+    Author: Erik Selin <erik.selin@gmail.com>
+    
+    Closes #10255 from tyro89/pythonstartup-python3.
+    
+    (cherry picked from commit e4e0b3f7b2945aae5ec7c3d68296010bbc5160cf)
+    Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+    (cherry picked from commit cf6d506c7426dbcd19d4c9d7c2d673aa52d00d4e)
+
+commit 166d94fa6623388b0936b422299bb9bfe0e101b4
+Author: Yuhao Yang <hhbyyh@gmail.com>
+Date:   Wed Jan 13 11:53:25 2016 -0800
+
+    [SPARK-12685][MLLIB][BACKPORT TO 1.4] word2vec trainWordsCount gets overflow
+    
+    jira: https://issues.apache.org/jira/browse/SPARK-12685
+    
+    master PR: https://github.com/apache/spark/pull/10627
+    
+    the log of word2vec reports
+    trainWordsCount = -785727483
+    during computation over a large dataset.
+    
+    Update the priority as it will affect the computation process.
+    alpha = learningRate * (1 - numPartitions * wordCount.toDouble / (trainWordsCount + 1))
+    
+    Author: Yuhao Yang <hhbyyh@gmail.com>
+    
+    Closes #10721 from hhbyyh/branch-1.4.
+    
+    (cherry picked from commit 7bd2564192f51f6229cf759a2bafc22134479955)
+    Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+    (cherry picked from commit 364f799cf6e23d084d7e9adb8c33f923f4130aa9)
+
+commit 792fd37fef20f1fd21e1d6ea85cd766fbb090d45
+Author: Luc Bourlier <luc.bourlier@typesafe.com>
+Date:   Wed Jan 13 11:45:13 2016 -0800
+
+    [SPARK-12805][MESOS] Fixes documentation on Mesos run modes
+    
+    The default run has changed, but the documentation didn't fully reflect the change.
+    
+    Author: Luc Bourlier <luc.bourlier@typesafe.com>
+    
+    Closes #10740 from skyluc/issue/mesos-modes-doc.
+    
+    (cherry picked from commit cc91e21879e031bcd05316eabb856e67a51b191d)
+    Signed-off-by: Reynold Xin <rxin@databricks.com>
+    (cherry picked from commit f9ecd3a3942e3acc2e0f8f8082186f1aca71d40f)
+
+commit 74b91e649cc5537856a2ed2ff4a53ac740e0501d
+Author: Dilip Biswal <dbiswal@us.ibm.com>
+Date:   Tue Jan 12 21:41:38 2016 -0800
+
+    [SPARK-12558][SQL] AnalysisException when multiple functions applied in GROUP BY clause
+    
+    cloud-fan Can you please take a look ?
+    
+    In this case, we are failing during check analysis while validating the aggregation expression. I have added a semanticEquals for HiveGenericUDF to fix this. Please let me know if this is the right way to address this issue.
+    
+    Author: Dilip Biswal <dbiswal@us.ibm.com>
+    
+    Closes #10520 from dilipbiswal/spark-12558.
+    
+    (cherry picked from commit dc7b3870fcfc2723319dbb8c53d721211a8116be)
+    Signed-off-by: Yin Huai <yhuai@databricks.com>
+    
+    Conflicts:
+    	sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala
+    
+    (cherry picked from commit dcdc864cf4e40a9d65e6e066c30355addc75c3b2)
+
+commit 3eb0cf2f98ac1dd9ecb54a14dda67fda398b5949
+Author: Sean Owen <sowen@cloudera.com>
+Date:   Tue Jan 12 11:50:33 2016 +0000
+
+    [SPARK-7615][MLLIB] MLLIB Word2Vec wordVectors divided by Euclidean Norm equals to zero
+    
+    Cosine similarity with 0 vector should be 0
+    
+    Related to https://github.com/apache/spark/pull/10152
+    
+    Author: Sean Owen <sowen@cloudera.com>
+    
+    Closes #10696 from srowen/SPARK-7615.
+    
+    (cherry picked from commit c48f2a3a5fd714ad2ff19b29337e55583988431e)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 94b39f7777ecff3794727c186bd681fa4c6af4fd)
+
+commit fe4caae2bfd217fadfd1eba5e94641aaf5343c3e
+Author: Yucai Yu <yucai.yu@intel.com>
+Date:   Tue Jan 12 13:23:23 2016 +0000
+
+    [SPARK-12582][TEST] IndexShuffleBlockResolverSuite fails in windows
+    
+    [SPARK-12582][Test] IndexShuffleBlockResolverSuite fails in windows
+    
+    * IndexShuffleBlockResolverSuite fails in windows due to file is not closed.
+    * mv IndexShuffleBlockResolverSuite.scala from "test/java" to "test/scala".
+    
+    https://issues.apache.org/jira/browse/SPARK-12582
+    
+    Author: Yucai Yu <yucai.yu@intel.com>
+    
+    Closes #10526 from yucai/master.
+    
+    (cherry picked from commit 7e15044d9d9f9839c8d422bae71f27e855d559b4)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 3221a7d912bdc5a1ce5992501e1a2e6a8248c668)
+
+commit 7487ac51699b4142a8b5980be05b0060d5eae278
+Author: Tommy YU <tummyyu@163.com>
+Date:   Tue Jan 12 13:20:04 2016 +0000
+
+    [SPARK-12638][API DOC] Parameter explanation not very accurate for rdd function "aggregate"
+    
+    Currently, RDD function aggregate's parameter doesn't explain well, especially parameter "zeroValue".
+    It's helpful to let junior scala user know that "zeroValue" attend both "seqOp" and "combOp" phase.
+    
+    Author: Tommy YU <tummyyu@163.com>
+    
+    Closes #10587 from Wenpei/rdd_aggregate_doc.
+    
+    (cherry picked from commit 9f0995bb0d0bbe5d9b15a1ca9fa18e246ff90d66)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 46fc7a12a30b82cf1bcaab0e987a98b4dace37fe)
+
+commit ba2ef25ee03f0d9c67259b2bf27efa24da7cbfe4
+Author: Josh Rosen <joshrosen@databricks.com>
+Date:   Mon Jan 11 12:56:43 2016 -0800
+
+    [SPARK-12734][HOTFIX] Build changes must trigger all tests; clean after install in dep tests
+    
+    This patch fixes a build/test issue caused by the combination of #10672 and a latent issue in the original `dev/test-dependencies` script.
+    
+    First, changes which _only_ touched build files were not triggering full Jenkins runs, making it possible for a build change to be merged even though it could cause failures in other tests. The `root` build module now depends on `build`, so all tests will now be run whenever a build-related file is changed.
+    
+    I also added a `clean` step to the Maven install step in `dev/test-dependencies` in order to address an issue where the dummy JARs stuck around and caused "multiple assembly JARs found" errors in tests.
+    
+    /cc zsxwing
+    
+    Author: Josh Rosen <joshrosen@databricks.com>
+    
+    Closes #10704 from JoshRosen/fix-build-test-problems.
+    
+    (cherry picked from commit a44991453a43615028083ba9546f5cd93112f6bd)
+    Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+    (cherry picked from commit 3b32aa9e29506606d4ca2407aa65a1aab8794805)
+
+commit da1e45dbc1e826c8c94c9d4d9b5b8b35acc010b8
+Author: Josh Rosen <joshrosen@databricks.com>
+Date:   Mon Jan 11 00:36:52 2016 -0800
+
+    [SPARK-12734][BUILD] Backport Netty exclusion + Maven enforcer fixes to branch-1.6
+    
+    This patch backports the Netty exclusion fixes from #10672 to branch-1.6.
+    
+    Author: Josh Rosen <joshrosen@databricks.com>
+    
+    Closes #10691 from JoshRosen/netty-exclude-16-backport.
+    
+    (cherry picked from commit 43b72d83e1d0c426d00d29e54ab7d14579700330)
+
+commit acfad05822240f900873500d5265bc9036b952aa
+Author: Josh Rosen <joshrosen@databricks.com>
+Date:   Sun Jan 10 14:49:45 2016 -0800
+
+    [SPARK-10359][PROJECT-INFRA] Backport dev/test-dependencies script to branch-1.6
+    
+    This patch backports the `dev/test-dependencies` script (from #10461) to branch-1.6.
+    
+    Author: Josh Rosen <joshrosen@databricks.com>
+    
+    Closes #10680 from JoshRosen/test-deps-16-backport.
+
+commit 1343cd91e73501aad3bfe0497640dfb68233ad8c
+Author: Michael Armbrust <michael@databricks.com>
+Date:   Fri Jan 8 15:43:11 2016 -0800
+
+    [SPARK-12696] Backport Dataset Bug fixes to 1.6
+    
+    We've fixed a lot of bugs in master, and since this is experimental in 1.6 we should consider back porting the fixes.  The only thing that is obviously risky to me is 0e07ed3, we might try to remove that.
+    
+    Author: Wenchen Fan <wenchen@databricks.com>
+    Author: gatorsmile <gatorsmile@gmail.com>
+    Author: Liang-Chi Hsieh <viirya@gmail.com>
+    Author: Cheng Lian <lian@databricks.com>
+    Author: Nong Li <nong@databricks.com>
+    
+    Closes #10650 from marmbrus/dataset-backports.
+    
+    (cherry picked from commit a6190508b20673952303eff32b3a559f0a264d03)
+
+commit 00a2971aca9a2797b67171413ce8a2c656b6cbce
+Author: Thomas Graves <tgraves@apache.org>
+Date:   Fri Jan 8 14:38:19 2016 -0600
+
+    [SPARK-12654] sc.wholeTextFiles with spark.hadoop.cloneConf=true fail…
+    
+    …s on secure Hadoop
+    
+    https://issues.apache.org/jira/browse/SPARK-12654
+    
+    So the bug here is that WholeTextFileRDD.getPartitions has:
+    val conf = getConf
+    in getConf if the cloneConf=true it creates a new Hadoop Configuration. Then it uses that to create a new newJobContext.
+    The newJobContext will copy credentials around, but credentials are only present in a JobConf not in a Hadoop Configuration. So basically when it is cloning the hadoop configuration its changing it from a JobConf to Configuration and dropping the credentials that were there. NewHadoopRDD just uses the conf passed in for the getPartitions (not getConf) which is why it works.
+    
+    Author: Thomas Graves <tgraves@staydecay.corp.gq1.yahoo.com>
+    
+    Closes #10651 from tgravescs/SPARK-12654.
+    
+    (cherry picked from commit 553fd7b912a32476b481fd3f80c1d0664b6c6484)
+    Signed-off-by: Tom Graves <tgraves@yahoo-inc.com>
+    (cherry picked from commit faf094c7c35baf0e73290596d4ca66b7d083ed5b)
+
+commit af29bb1a88c401b918f458ab40d869e0ab1afdcd
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Fri Jan 8 02:02:06 2016 -0800
+
+    [SPARK-12591][STREAMING] Register OpenHashMapBasedStateMap for Kryo (branch 1.6)
+    
+    backport #10609 to branch 1.6
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10656 from zsxwing/SPARK-12591-branch-1.6.
+    
+    (cherry picked from commit 0d96c54534d8bfca191c892b98397a176bc46152)
+
+commit 75a018e7480ca3f2a2525f0e70f1b6091989ee01
+Author: Darek Blasiak <darek.blasiak@640labs.com>
+Date:   Thu Jan 7 21:15:40 2016 +0000
+
+    [SPARK-12598][CORE] bug in setMinPartitions
+    
+    There is a bug in the calculation of ```maxSplitSize```.  The ```totalLen``` should be divided by ```minPartitions``` and not by ```files.size```.
+    
+    Author: Darek Blasiak <darek.blasiak@640labs.com>
+    
+    Closes #10546 from datafarmer/setminpartitionsbug.
+    
+    (cherry picked from commit 8346518357f4a3565ae41e9a5ccd7e2c3ed6c468)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 6ef823544dfbc8c9843bdedccfda06147a1a74fe)
+
+commit 497c14f684fae14d3cd62b49aae9eb8913851cc1
+Author: Sameer Agarwal <sameer@databricks.com>
+Date:   Thu Jan 7 10:37:15 2016 -0800
+
+    [SPARK-12662][SQL] Fix DataFrame.randomSplit to avoid creating overlapping splits
+    
+    https://issues.apache.org/jira/browse/SPARK-12662
+    
+    cc yhuai
+    
+    Author: Sameer Agarwal <sameer@databricks.com>
+    
+    Closes #10626 from sameeragarwal/randomsplit.
+    
+    (cherry picked from commit f194d9911a93fc3a78be820096d4836f22d09976)
+    Signed-off-by: Reynold Xin <rxin@databricks.com>
+    (cherry picked from commit 017b73e69693cd151516f92640a95a4a66e02dff)
+
+commit b22656931d0779ac10e720f5df212d570ce2ccb0
+Author: zero323 <matthew.szymkiewicz@gmail.com>
+Date:   Thu Jan 7 10:32:56 2016 -0800
+
+    [SPARK-12006][ML][PYTHON] Fix GMM failure if initialModel is not None
+    
+    If initial model passed to GMM is not empty it causes net.razorvine.pickle.PickleException. It can be fixed by converting initialModel.weights to list.
+    
+    Author: zero323 <matthew.szymkiewicz@gmail.com>
+    
+    Closes #10644 from zero323/SPARK-12006.
+    
+    (cherry picked from commit 592f64985d0d58b4f6a0366bf975e04ca496bdbe)
+    Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+    (cherry picked from commit 69a885a71cfe7c62179e784e7d9eee023d3bb6eb)
+
+commit dd0a0ddb0ced9bd3f1bac094ce18621895bb0be0
+Author: Guillaume Poulin <poulin.guillaume@gmail.com>
+Date:   Wed Jan 6 21:34:46 2016 -0800
+
+    [SPARK-12678][CORE] MapPartitionsRDD clearDependencies
+    
+    MapPartitionsRDD was keeping a reference to `prev` after a call to
+    `clearDependencies` which could lead to memory leak.
+    
+    Author: Guillaume Poulin <poulin.guillaume@gmail.com>
+    
+    Closes #10623 from gpoulin/map_partition_deps.
+    
+    (cherry picked from commit b6738520374637347ab5ae6c801730cdb6b35daa)
+    Signed-off-by: Reynold Xin <rxin@databricks.com>
+    (cherry picked from commit d061b852274c12784f3feb96c0cdcab39989f8e7)
+
+commit eaf84599a7c3b75b2ded104821101d652c1881ad
+Author: jerryshao <sshao@hortonworks.com>
+Date:   Wed Jan 6 21:28:29 2016 -0800
+
+    [SPARK-12673][UI] Add missing uri prepending for job description
+    
+    Otherwise the url will be failed to proxy to the right one if in YARN mode. Here is the screenshot:
+    
+    ![screen shot 2016-01-06 at 5 28 26 pm](https://cloud.githubusercontent.com/assets/850797/12139632/bbe78ecc-b49c-11e5-8932-94e8b3622a09.png)
+    
+    Author: jerryshao <sshao@hortonworks.com>
+    
+    Closes #10618 from jerryshao/SPARK-12673.
+    
+    (cherry picked from commit 174e72ceca41a6ac17ad05d50832ee9c561918c0)
+    Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+    (cherry picked from commit 94af69c9be70b9d2cd95c26288e2af9599d61e5c)
+
+commit e8f7037755debef08a8bbdd02d62df589efdec6b
+Author: Liang-Chi Hsieh <viirya@appier.com>
+Date:   Mon Dec 14 09:59:42 2015 -0800
+
+    [SPARK-12016] [MLLIB] [PYSPARK] Wrap Word2VecModel when loading it in pyspark
+    
+    JIRA: https://issues.apache.org/jira/browse/SPARK-12016
+    
+    We should not directly use Word2VecModel in pyspark. We need to wrap it in a Word2VecModelWrapper when loading it in pyspark.
+    
+    Author: Liang-Chi Hsieh <viirya@appier.com>
+    
+    Closes #10100 from viirya/fix-load-py-wordvecmodel.
+    
+    (cherry picked from commit b51a4cdff3a7e640a8a66f7a9c17021f3056fd34)
+    Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+    (cherry picked from commit 11b901b22b1cdaa6d19b1b73885627ac601be275)
+
+commit bd56448e024bf62dd8b2b6cf991a032a029b55aa
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Wed Jan 6 12:03:01 2016 -0800
+
+    [SPARK-12617][PYSPARK] Move Py4jCallbackConnectionCleaner to Streaming
+    
+    Move Py4jCallbackConnectionCleaner to Streaming because the callback server starts only in StreamingContext.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10621 from zsxwing/SPARK-12617-2.
+    
+    (cherry picked from commit 1e6648d62fb82b708ea54c51cd23bfe4f542856e)
+    Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+    (cherry picked from commit d821fae0ecca6393d3632977797d72ba594d26a9)
+
+commit b0b30378b31756e1b5296ce7bbe6786d21f1987e
+Author: BrianLondon <brian@seatgeek.com>
+Date:   Tue Jan 5 23:15:07 2016 +0000
+
+    [SPARK-12453][STREAMING] Remove explicit dependency on aws-java-sdk
+    
+    Successfully ran kinesis demo on a live, aws hosted kinesis stream against master and 1.6 branches.  For reasons I don't entirely understand it required a manual merge to 1.5 which I did as shown here: https://github.com/BrianLondon/spark/commit/075c22e89bc99d5e99be21f40e0d72154a1e23a2
+    
+    The demo ran successfully on the 1.5 branch as well.
+    
+    According to `mvn dependency:tree` it is still pulling a fairly old version of the aws-java-sdk (1.9.37), but this appears to have fixed the kinesis regression in 1.5.2.
+    
+    Author: BrianLondon <brian@seatgeek.com>
+    
+    Closes #10492 from BrianLondon/remove-only.
+    
+    (cherry picked from commit ff89975543b153d0d235c0cac615d45b34aa8fe7)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit bf3dca2df4dd3be264691be1321e0c700d4f4e32)
+
+commit 06941779ad9ebb53aa96ec7e2b0455269db3d84c
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Tue Jan 5 13:48:47 2016 -0800
+
+    [SPARK-12511] [PYSPARK] [STREAMING] Make sure PythonDStream.registerSerializer is called only once
+    
+    There is an issue that Py4J's PythonProxyHandler.finalize blocks forever. (https://github.com/bartdag/py4j/pull/184)
+    
+    Py4j will create a PythonProxyHandler in Java for "transformer_serializer" when calling "registerSerializer". If we call "registerSerializer" twice, the second PythonProxyHandler will override the first one, then the first one will be GCed and trigger "PythonProxyHandler.finalize". To avoid that, we should not call"registerSerializer" more than once, so that "PythonProxyHandler" in Java side won't be GCed.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10514 from zsxwing/SPARK-12511.
+    
+    (cherry picked from commit 6cfe341ee89baa952929e91d33b9ecbca73a3ea0)
+    Signed-off-by: Davies Liu <davies.liu@gmail.com>
+    (cherry picked from commit 83fe5cf9a2621d7e53b5792a7c7549c9da7f130a)
+
+commit 208d1a4017d8cb0f3b41fc170cd4e5b5343254cf
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Tue Jan 5 13:10:46 2016 -0800
+
+    [SPARK-12617] [PYSPARK] Clean up the leak sockets of Py4J
+    
+    This patch added Py4jCallbackConnectionCleaner to clean the leak sockets of Py4J every 30 seconds. This is a workaround before Py4J fixes the leak issue https://github.com/bartdag/py4j/issues/187
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10579 from zsxwing/SPARK-12617.
+    
+    (cherry picked from commit 047a31bb1042867b20132b347b1e08feab4562eb)
+    Signed-off-by: Davies Liu <davies.liu@gmail.com>
+    (cherry picked from commit f31d0fd9ea12bfe94434671fbcfe3d0e06a4a97d)
+
+commit 051fad748c27787f69541e62fac3c7716cd5d526
+Author: Pete Robbins <robbinspg@gmail.com>
+Date:   Tue Jan 5 13:10:21 2016 -0800
+
+    [SPARK-12647][SQL] Fix o.a.s.sqlexecution.ExchangeCoordinatorSuite.determining the number of reducers: aggregate operator
+    
+    change expected partition sizes
+    
+    Author: Pete Robbins <robbinspg@gmail.com>
+    
+    Closes #10599 from robbinspg/branch-1.6.
+    
+    (cherry picked from commit 5afa62b20090e763ba10d9939ec214a11466087b)
+
+commit bdece7d594c52a1150266edd82ff761ce08844b7
+Author: Nong Li <nong@databricks.com>
+Date:   Mon Jan 4 14:58:24 2016 -0800
+
+    [SPARK-12589][SQL] Fix UnsafeRowParquetRecordReader to properly set the row length.
+    
+    The reader was previously not setting the row length meaning it was wrong if there were variable
+    length columns. This problem does not manifest usually, since the value in the column is correct and
+    projecting the row fixes the issue.
+    
+    Author: Nong Li <nong@databricks.com>
+    
+    Closes #10576 from nongli/spark-12589.
+    
+    (cherry picked from commit 34de24abb518e95c4312b77aa107d061ce02c835)
+    Signed-off-by: Yin Huai <yhuai@databricks.com>
+    
+    Conflicts:
+    	sql/catalyst/src/main/java/org/apache/spark/sql/catalyst/expressions/UnsafeRow.java
+    
+    (cherry picked from commit 8ac9198096d1cef9fbc062df8b8bd94fb9e96829)
+
+commit 3af05e641953e09994b972dd91a9ee90d8b77b00
+Author: Josh Rosen <joshrosen@databricks.com>
+Date:   Mon Jan 4 10:39:42 2016 -0800
+
+    [SPARK-12579][SQL] Force user-specified JDBC driver to take precedence
+    
+    Spark SQL's JDBC data source allows users to specify an explicit JDBC driver to load (using the `driver` argument), but in the current code it's possible that the user-specified driver will not be used when it comes time to actually create a JDBC connection.
+    
+    In a nutshell, the problem is that you might have multiple JDBC drivers on the classpath that claim to be able to handle the same subprotocol, so simply registering the user-provided driver class with the our `DriverRegistry` and JDBC's `DriverManager` is not sufficient to ensure that it's actually used when creating the JDBC connection.
+    
+    This patch addresses this issue by first registering the user-specified driver with the DriverManager, then iterating over the driver manager's loaded drivers in order to obtain the correct driver and use it to create a connection (previously, we just called `DriverManager.getConnection()` directly).
+    
+    If a user did not specify a JDBC driver to use, then we call `DriverManager.getDriver` to figure out the class of the driver to use, then pass that class's name to executors; this guards against corner-case bugs in situations where the driver and executor JVMs might have different sets of JDBC drivers on their classpaths (previously, there was the (rare) potential for `DriverManager.getConnection()` to use different drivers on the driver and executors if the user had not explicitly specified a JDBC driver class and the classpaths were different).
+    
+    This patch is inspired by a similar patch that I made to the `spark-redshift` library (https://github.com/databricks/spark-redshift/pull/143), which contains its own modified fork of some of Spark's JDBC data source code (for cross-Spark-version compatibility reasons).
+    
+    Author: Josh Rosen <joshrosen@databricks.com>
+    
+    Closes #10519 from JoshRosen/jdbc-driver-precedence.
+    
+    (cherry picked from commit 6c83d938cc61bd5fabaf2157fcc3936364a83f02)
+    Signed-off-by: Yin Huai <yhuai@databricks.com>
+    (cherry picked from commit 7f37c1e45d52b7823d566349e2be21366d73651f)
+
+commit e5d145309e9e0e10880be7854bcf0c53e1bb8425
+Author: Pete Robbins <robbinspg@gmail.com>
+Date:   Mon Jan 4 10:43:21 2016 -0800
+
+    [SPARK-12470] [SQL] Fix size reduction calculation
+    
+    also only allocate required buffer size
+    
+    Author: Pete Robbins <robbinspg@gmail.com>
+    
+    Closes #10421 from robbinspg/master.
+    
+    (cherry picked from commit b504b6a90a95a723210beb0031ed41a75d702f66)
+    Signed-off-by: Davies Liu <davies.liu@gmail.com>
+    
+    Conflicts:
+    	sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala
+    
+    (cherry picked from commit b5a1f564a3c099ef0b674599f0b012d9346115a3)
+
+commit 96beaa25272316f1b93ac3e6a43d43ac7d1c45a5
+Author: Xiu Guo <xguo27@gmail.com>
+Date:   Sun Jan 3 20:48:56 2016 -0800
+
+    [SPARK-12562][SQL] DataFrame.write.format(text) requires the column name to be called value
+    
+    Author: Xiu Guo <xguo27@gmail.com>
+    
+    Closes #10515 from xguo27/SPARK-12562.
+    
+    (cherry picked from commit 84f8492c1555bf8ab44c9818752278f61768eb16)
+    Signed-off-by: Reynold Xin <rxin@databricks.com>
+    (cherry picked from commit f7a322382a3c1eed7088541add55a7813813a958)
+
+commit 2706e55e76cdf40ed4fe30cf9f447cdf992c7a13
+Author: felixcheung <felixcheung_m@hotmail.com>
+Date:   Sun Jan 3 20:53:35 2016 +0530
+
+    [SPARK-12327][SPARKR] fix code for lintr warning for commented code
+    
+    shivaram
+    
+    Author: felixcheung <felixcheung_m@hotmail.com>
+    
+    Closes #10408 from felixcheung/rcodecomment.
+    
+    (cherry picked from commit c3d505602de2fd2361633f90e4fff7e041849e28)
+    Signed-off-by: Shivaram Venkataraman <shivaram@cs.berkeley.edu>
+    (cherry picked from commit 4e9dd16987b3cba19dcf6437f3b6c8aeb59e2e39)
+
+commit 378e29115628b6ff74d0da3602712e374245c671
+Author: Carson Wang <carson.wang@intel.com>
+Date:   Wed Dec 30 13:49:10 2015 -0800
+
+    [SPARK-12399] Display correct error message when accessing REST API with an unknown app Id
+    
+    I got an exception when accessing the below REST API with an unknown application Id.
+    `http://<server-url>:18080/api/v1/applications/xxx/jobs`
+    Instead of an exception, I expect an error message "no such app: xxx" which is a similar error message when I access `/api/v1/applications/xxx`
+    ```
+    org.spark-project.guava.util.concurrent.UncheckedExecutionException: java.util.NoSuchElementException: no app with key xxx
+    	at org.spark-project.guava.cache.LocalCache$Segment.get(LocalCache.java:2263)
+    	at org.spark-project.guava.cache.LocalCache.get(LocalCache.java:4000)
+    	at org.spark-project.guava.cache.LocalCache.getOrLoad(LocalCache.java:4004)
+    	at org.spark-project.guava.cache.LocalCache$LocalLoadingCache.get(LocalCache.java:4874)
+    	at org.apache.spark.deploy.history.HistoryServer.getSparkUI(HistoryServer.scala:116)
+    	at org.apache.spark.status.api.v1.UIRoot$class.withSparkUI(ApiRootResource.scala:226)
+    	at org.apache.spark.deploy.history.HistoryServer.withSparkUI(HistoryServer.scala:46)
+    	at org.apache.spark.status.api.v1.ApiRootResource.getJobs(ApiRootResource.scala:66)
+    ```
+    
+    Author: Carson Wang <carson.wang@intel.com>
+    
+    Closes #10352 from carsonwang/unknownAppFix.
+    
+    (cherry picked from commit b244297966be1d09f8e861cfe2d8e69f7bed84da)
+    Signed-off-by: Marcelo Vanzin <vanzin@cloudera.com>
+    (cherry picked from commit cd86075b52d6363f674dffc3eb71d90449563879)
+
+commit bf53d92d22980b117151ace95c1bb78dc3fa6415
+Author: Holden Karau <holden@us.ibm.com>
+Date:   Wed Dec 30 11:14:47 2015 -0800
+
+    [SPARK-12300] [SQL] [PYSPARK] fix schema inferance on local collections
+    
+    Current schema inference for local python collections halts as soon as there are no NullTypes. This is different than when we specify a sampling ratio of 1.0 on a distributed collection. This could result in incomplete schema information.
+    
+    Author: Holden Karau <holden@us.ibm.com>
+    
+    Closes #10275 from holdenk/SPARK-12300-fix-schmea-inferance-on-local-collections.
+    
+    (cherry picked from commit d1ca634db4ca9db7f0ba7ca38a0e03bcbfec23c9)
+    Signed-off-by: Davies Liu <davies.liu@gmail.com>
+    (cherry picked from commit 8dc65497152f2c8949b08fddad853d31c4bd9ae5)
+
+commit e223493ca584f2c2d57ce5e5b67a6fa64ee51c47
+Author: Forest Fang <forest.fang@outlook.com>
+Date:   Tue Dec 29 12:45:24 2015 +0530
+
+    [SPARK-12526][SPARKR] ifelse`, `when`, `otherwise` unable to take Column as value
+    
+    `ifelse`, `when`, `otherwise` is unable to take `Column` typed S4 object as values.
+    
+    For example:
+    ```r
+    ifelse(lit(1) == lit(1), lit(2), lit(3))
+    ifelse(df$mpg > 0, df$mpg, 0)
+    ```
+    will both fail with
+    ```r
+    attempt to replicate an object of type 'environment'
+    ```
+    
+    The PR replaces `ifelse` calls with `if ... else ...` inside the function implementations to avoid attempt to vectorize(i.e. `rep()`). It remains to be discussed whether we should instead support vectorization in these functions for consistency because `ifelse` in base R is vectorized but I cannot foresee any scenarios these functions will want to be vectorized in SparkR.
+    
+    For reference, added test cases which trigger failures:
+    ```r
+    . Error: when(), otherwise() and ifelse() with column on a DataFrame ----------
+    error in evaluating the argument 'x' in selecting a method for function 'collect':
+      error in evaluating the argument 'col' in selecting a method for function 'select':
+      attempt to replicate an object of type 'environment'
+    Calls: when -> when -> ifelse -> ifelse
+    
+    1: withCallingHandlers(eval(code, new_test_environment), error = capture_calls, message = function(c) invokeRestart("muffleMessage"))
+    2: eval(code, new_test_environment)
+    3: eval(expr, envir, enclos)
+    4: expect_equal(collect(select(df, when(df$a > 1 & df$b > 2, lit(1))))[, 1], c(NA, 1)) at test_sparkSQL.R:1126
+    5: expect_that(object, equals(expected, label = expected.label, ...), info = info, label = label)
+    6: condition(object)
+    7: compare(actual, expected, ...)
+    8: collect(select(df, when(df$a > 1 & df$b > 2, lit(1))))
+    Error: Test failures
+    Execution halted
+    ```
+    
+    Author: Forest Fang <forest.fang@outlook.com>
+    
+    Closes #10481 from saurfang/spark-12526.
+    
+    (cherry picked from commit d80cc90b5545cff82cd9b340f12d01eafc9ca524)
+    Signed-off-by: Shivaram Venkataraman <shivaram@cs.berkeley.edu>
+    (cherry picked from commit c069ffc2b13879f471e6d888116f45f6a8902236)
+
+commit 24c49a9e015d8f761f0f02ad1b9e39be8f1d8e79
+Author: Takeshi YAMAMURO <linguin.m.s@gmail.com>
+Date:   Mon Dec 28 21:28:32 2015 -0800
+
+    [SPARK-11394][SQL] Throw IllegalArgumentException for unsupported types in postgresql
+    
+    If DataFrame has BYTE types, throws an exception:
+    org.postgresql.util.PSQLException: ERROR: type "byte" does not exist
+    
+    Author: Takeshi YAMAMURO <linguin.m.s@gmail.com>
+    
+    Closes #9350 from maropu/FixBugInPostgreJdbc.
+    
+    (cherry picked from commit 73862a1eb9744c3c32458c9c6f6431c23783786a)
+    Signed-off-by: Yin Huai <yhuai@databricks.com>
+    (cherry picked from commit 85a871818ee1134deb29387c78c6ce21eb6d2acb)
+
+commit 96f024ba083165fa2ca227254826274aad14db20
+Author: Shixiong Zhu <shixiong@databricks.com>
+Date:   Mon Dec 28 15:01:51 2015 -0800
+
+    [SPARK-12489][CORE][SQL][MLIB] Fix minor issues found by FindBugs
+    
+    Include the following changes:
+    
+    1. Close `java.sql.Statement`
+    2. Fix incorrect `asInstanceOf`.
+    3. Remove unnecessary `synchronized` and `ReentrantLock`.
+    
+    Author: Shixiong Zhu <shixiong@databricks.com>
+    
+    Closes #10440 from zsxwing/findbugs.
+    
+    (cherry picked from commit 710b41172958a0b3a2b70c48821aefc81893731b)
+    Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+    (cherry picked from commit fd202485ace613d9930d0ede48ba8a65920004db)
+
+commit f9c6f4c2104b78fc5fb48f547f5a5d2599027f75
+Author: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+Date:   Tue Dec 29 05:33:19 2015 +0900
+
+    [SPARK-12424][ML] The implementation of ParamMap#filter is wrong.
+    
+    ParamMap#filter uses `mutable.Map#filterKeys`. The return type of `filterKey` is collection.Map, not mutable.Map but the result is casted to mutable.Map using `asInstanceOf` so we get `ClassCastException`.
+    Also, the return type of Map#filterKeys is not Serializable. It's the issue of Scala (https://issues.scala-lang.org/browse/SI-6654).
+    
+    Author: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+    
+    Closes #10381 from sarutak/SPARK-12424.
+    
+    (cherry picked from commit 07165ca06fe0866677525f85fec25e4dbd336674)
+    Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+    (cherry picked from commit 7c7d76f34c0e09aae12f03e7c2922d4eb50d1830)
+
+commit b2e77ad065557c73890fe28402bd4d7cfa298f4a
+Author: Yaron Weinsberg <wyaron@gmail.com>
+Date:   Tue Dec 29 05:19:11 2015 +0900
+
+    [SPARK-12517] add default RDD name for one created via sc.textFile
+    
+    The feature was first added at commit: 7b877b27053bfb7092e250e01a3b887e1b50a109 but was later removed (probably by mistake) at commit: fc8b58195afa67fbb75b4c8303e022f703cbf007.
+    This change sets the default path of RDDs created via sc.textFile(...) to the path argument.
+    
+    Here is the symptom:
+    
+    * Using spark-1.5.2-bin-hadoop2.6:
+    
+    scala> sc.textFile("/home/root/.bashrc").name
+    res5: String = null
+    
+    scala> sc.binaryFiles("/home/root/.bashrc").name
+    res6: String = /home/root/.bashrc
+    
+    * while using Spark 1.3.1:
+    
+    scala> sc.textFile("/home/root/.bashrc").name
+    res0: String = /home/root/.bashrc
+    
+    scala> sc.binaryFiles("/home/root/.bashrc").name
+    res1: String = /home/root/.bashrc
+    
+    Author: Yaron Weinsberg <wyaron@gmail.com>
+    Author: yaron <yaron@il.ibm.com>
+    
+    Closes #10456 from wyaron/master.
+    
+    (cherry picked from commit 73b70f076d4e22396b7e145f2ce5974fbf788048)
+    Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+    (cherry picked from commit 1fbcb6e7be9cd9fa5255837cfc5358f2283f4aaf)
+
+commit c49e10d08a5f301984c96281b7aff06af2509472
+Author: CK50 <christian.kurz@oracle.com>
+Date:   Thu Dec 24 13:39:11 2015 +0000
+
+    [SPARK-12010][SQL] Spark JDBC requires support for column-name-free INSERT syntax
+    
+    In the past Spark JDBC write only worked with technologies which support the following INSERT statement syntax (JdbcUtils.scala: insertStatement()):
+    
+    INSERT INTO $table VALUES ( ?, ?, ..., ? )
+    
+    But some technologies require a list of column names:
+    
+    INSERT INTO $table ( $colNameList ) VALUES ( ?, ?, ..., ? )
+    
+    This was blocking the use of e.g. the Progress JDBC Driver for Cassandra.
+    
+    Another limitation is that syntax 1 relies no the dataframe field ordering match that of the target table. This works fine, as long as the target table has been created by writer.jdbc().
+    
+    If the target table contains more columns (not created by writer.jdbc()), then the insert fails due mismatch of number of columns or their data types.
+    
+    This PR switches to the recommended second INSERT syntax. Column names are taken from datafram field names.
+    
+    Author: CK50 <christian.kurz@oracle.com>
+    
+    Closes #10380 from CK50/master-SPARK-12010-2.
+    
+    (cherry picked from commit 502476e45c314a1229b3bce1c61f5cb94a9fc04b)
+    Signed-off-by: Sean Owen <sowen@cloudera.com>
+    (cherry picked from commit 865dd8bccfc994310ad6664151d469043706ef3b)
+
+commit 7f9375780b9066ec26ee9ae6ffaae24f867baccd
+Author: Kazuaki Ishizaki <ishizaki@jp.ibm.com>
+Date:   Thu Dec 24 21:27:55 2015 +0900
+
+    [SPARK-12502][BUILD][PYTHON] Script /dev/run-tests fails when IBM Java is used
+    
+    fix an exception with IBM JDK by removing update field from a JavaVersion tuple. This is because IBM JDK does not have information on update '_xx'
+    
+    Author: Kazuaki Ishizaki <ishizaki@jp.ibm.com>
+    
+    Closes #10463 from kiszk/SPARK-12502.
+    
+    (cherry picked from commit 9e85bb71ad2d7d3a9da0cb8853f3216d37e6ff47)
+    Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+    (cherry picked from commit 4dd8712c1b64a64da0fa0413e2c9be68ad0ddc17)
+
+commit b4a365d30999629938c7728829a4f5bafb254a47
+Author: Adrian Bridgett <adrian@smop.co.uk>
+Date:   Wed Dec 23 16:00:03 2015 -0800
+
+    [SPARK-12499][BUILD] don't force MAVEN_OPTS
+    
+    allow the user to override MAVEN_OPTS (2GB wasn't sufficient for me)
+    
+    Author: Adrian Bridgett <adrian@smop.co.uk>
+    
+    Closes #10448 from abridgett/feature/do_not_force_maven_opts.
+    
+    (cherry picked from commit ead6abf7e7fc14b451214951d4991d497aa65e63)
+    Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+    (cherry picked from commit 5987b1658b837400691160c38ba6eedc47274ee4)
+
+commit 5d798162aa68f2d9976bee973ab36665e705196c
+Author: pierre-borckmans <pierre.borckmans@realimpactanalytics.com>
+Date:   Tue Dec 22 23:00:42 2015 -0800
+
+    [SPARK-12477][SQL] - Tungsten projection fails for null values in array fields
+    
+    Accessing null elements in an array field fails when tungsten is enabled.
+    It works in Spark 1.3.1, and in Spark > 1.5 with Tungsten disabled.
+    
+    This PR solves this by checking if the accessed element in the array field is null, in the generated code.
+    
+    Example:
+    ```
+    // Array of String
+    case class AS( as: Seq[String] )
+    val dfAS = sc.parallelize( Seq( AS ( Seq("a",null,"b") ) ) ).toDF
+    dfAS.registerTempTable("T_AS")
+    for (i <- 0 to 2) { println(i + " = " + sqlContext.sql(s"select as[$i] from T_AS").collect.mkString(","))}
+    ```
+    
+    With Tungsten disabled:
+    ```
+    0 = [a]
+    1 = [null]
+    2 = [b]
+    ```
+    
+    With Tungsten enabled:
+    ```
+    0 = [a]
+    15/12/22 09:32:50 ERROR Executor: Exception in task 7.0 in stage 1.0 (TID 15)
+    java.lang.NullPointerException
+    	at org.apache.spark.sql.catalyst.expressions.UnsafeRowWriters$UTF8StringWriter.getSize(UnsafeRowWriters.java:90)
+    	at org.apache.spark.sql.catalyst.expressions.GeneratedClass$SpecificUnsafeProjection.apply(Unknown Source)
+    	at org.apache.spark.sql.execution.TungstenProject$$anonfun$3$$anonfun$apply$3.apply(basicOperators.scala:90)
+    	at org.apache.spark.sql.execution.TungstenProject$$anonfun$3$$anonfun$apply$3.apply(basicOperators.scala:88)
+    	at scala.collection.Iterator$$anon$11.next(Iterator.scala:328)
+    	at scala.collection.Iterator$$anon$11.next(Iterator.scala:328)
+    	at scala.collection.Iterator$class.foreach(Iterator.scala:727)
+    	at scala.collection.AbstractIterator.foreach(Iterator.scala:1157)
+    ```
+    
+    Author: pierre-borckmans <pierre.borckmans@realimpactanalytics.com>
+    
+    Closes #10429 from pierre-borckmans/SPARK-12477_Tungsten-Projection-Null-Element-In-Array.
+    
+    (cherry picked from commit 43b2a6390087b7ce262a54dc8ab8dd825db62e21)
+    Signed-off-by: Reynold Xin <rxin@databricks.com>
+    (cherry picked from commit c6c9bf99af0ee0559248ad772460e9b2efde5861)
+
+commit ee0428726145f276752c39dd5de9957221ea80e7
+Author: Cheng Lian <lian@databricks.com>
+Date:   Wed Dec 9 23:30:42 2015 +0800
+
+    [SPARK-12012][SQL] Show more comprehensive PhysicalRDD metadata when visualizing SQL query plan
+    
+    This PR adds a `private[sql]` method `metadata` to `SparkPlan`, which can be used to describe detail information about a physical plan during visualization. Specifically, this PR uses this method to provide details of `PhysicalRDD`s translated from a data source relation. For example, a `ParquetRelation` converted from Hive metastore table `default.psrc` is now shown as the following screenshot:
+    
+    ![image](https://cloud.githubusercontent.com/assets/230655/11526657/e10cb7e6-9916-11e5-9afa-f108932ec890.png)
+    
+    And here is the screenshot for a regular `ParquetRelation` (not converted from Hive metastore table) loaded from a really long path:
+    
+    ![output](https://cloud.githubusercontent.com/assets/230655/11680582/37c66460-9e94-11e5-8f50-842db5309d5a.png)
+    
+    Author: Cheng Lian <lian@databricks.com>
+    
+    Closes #10004 from liancheng/spark-12012.physical-rdd-metadata.
+    
+    (cherry picked from commit 6e1c55eac4849669e119ce0d51f6d051830deb9f)
+
+commit 43846d5133dcd03b1e78ef7f52563c65f8d2910f
+Author: Carson Wang <carson.wang@intel.com>
+Date:   Thu Dec 3 16:39:12 2015 -0800
+
+    [SPARK-11206] Support SQL UI on the history server (resubmit)
+    
+    Resubmit #9297 and #9991
+    On the live web UI, there is a SQL tab which provides valuable information for the SQL query. But once the workload is finished, we won't see the SQL tab on the history server. It will be helpful if we support SQL UI on the history server so we can analyze it even after its execution.
+    
+    To support SQL UI on the history server:
+    1. I added an onOtherEvent method to the SparkListener trait and post all SQL related events to the same event bus.
+    2. Two SQL events SparkListenerSQLExecutionStart and SparkListenerSQLExecutionEnd are defined in the sql module.
+    3. The new SQL events are written to event log using Jackson.
+    4. A new trait SparkHistoryListenerFactory is added to allow the history server to feed events to the SQL history listener. The SQL implementation is loaded at runtime using java.util.ServiceLoader.
+    
+    Author: Carson Wang <carson.wang@intel.com>
+    
+    Closes #10061 from carsonwang/SqlHistoryUI.
+    
+    (cherry picked from commit b6e9963ee4bf0ffb62c8e9829a551bcdc31e12e3)
+
+commit 53383ac43dae197e8206d5b5b2d98407568f9c83
+Author: Imran Rashid <irashid@cloudera.com>
+Date:   Mon Jan 25 12:58:55 2016 -0800
+
+    CLOUDERA-BUILD [CDH-36259] Disable the Unified Memory Manager by default in CDH5.7
+
+commit d7759bf009ef6d2d3e8b2828f45043c0d39192d0
+Author: scwf <wangfei1@huawei.com>
+Date:   Tue Jan 19 14:49:55 2016 -0800
+
+    [SPARK-2750][WEB UI] Add https support to the Web UI
+    
+    Author: scwf <wangfei1@huawei.com>
+    Author: Marcelo Vanzin <vanzin@cloudera.com>
+    Author: WangTaoTheTonic <wangtao111@huawei.com>
+    Author: w00228970 <wangfei1@huawei.com>
+    
+    Closes #10238 from vanzin/SPARK-2750.
+    
+    (cherry picked from commit 43f1d59e17d89d19b322d639c5069a3fc0c8e2ed)
+
+commit 01462646de8e46e93d78622520bac3834aa26520
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Fri Jan 22 16:29:57 2016 -0800
+
+    CLOUDERA-BUILD. Fix Spark's use of Hive's VariableSubtitution.
+    
+    This (internal) Hive API has changed and adjustments are needed in
+    Spark for things to compile.
+
+commit f07cd3551919fdc5140f34fbf88711fd2009f5f9
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Fri Dec 18 09:49:08 2015 -0800
+
+    [SPARK-12350][CORE] Don't log errors when requested stream is not found.
+    
+    If a client requests a non-existent stream, just send a failure message
+    back, without logging any error on the server side (since it's not a
+    server error).
+    
+    On the executor side, avoid error logs by translating any errors during
+    transfer to a `ClassNotFoundException`, so that loading the class is
+    retried on a the parent class loader. This can mask IO errors during
+    transmission, but the most common cause is that the class is not
+    served by the remote end.
+    
+    Author: Marcelo Vanzin <vanzin@cloudera.com>
+    
+    Closes #10337 from vanzin/SPARK-12350.
+    
+    (cherry picked from commit 2782818287a71925523c1320291db6cb25221e9f)
+
+commit e0d03eb30e03f589407c3cf37317a64f18db8257
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Thu Dec 10 13:26:30 2015 -0800
+
+    [SPARK-11563][CORE][REPL] Use RpcEnv to transfer REPL-generated classes.
+    
+    This avoids bringing up yet another HTTP server on the driver, and
+    instead reuses the file server already managed by the driver's
+    RpcEnv. As a bonus, the repl now inherits the security features of
+    the network library.
+    
+    There's also a small change to create the directory for storing classes
+    under the root temp dir for the application (instead of directly
+    under java.io.tmpdir).
+    
+    Author: Marcelo Vanzin <vanzin@cloudera.com>
+    
+    Closes #9923 from vanzin/SPARK-11563.
+    
+    (cherry picked from commit 4a46b8859d3314b5b45a67cdc5c81fecb6e9e78c)
+
+commit 124a71fe7eaee16d0d3c25088730759f74644f12
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Jan 13 12:39:32 2016 -0800
+
+    CLOUDERA-BUILD. CDH-28174. Enable netty-based file server.
+    
+    SPARK-11140 was actually backported to Spark 1.6, but in a disabled
+    state; this change just undoes the disabling so that the Netty code
+    is used to transfer files, instead of the HTTP server.
+
+commit 5e5eff8a516de68ff1f79f0492b292ec013a3b15
+Author: Mark Grover <mark@apache.org>
+Date:   Mon Jan 11 16:56:16 2016 -0800
+
+    CLOUDERA-BUILD. Use Cloudera's Kafka version to build against, instead of upstream Kafka
+
+commit 0da1341ab199734145ea8616c5ff2a9ca28cc32d
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Sep 30 12:24:03 2015 -0700
+
+    CLOUDERA-BUILD. CDH-32176. Add option to not localize configuration.
+    
+    Oozie does not have control over env variables that define where the
+    hadoop config lives, and sometimes Spark may fail to localize that
+    configuration; this change adds a config option to disable localization
+    so that Oozie can launch Spark jobs on secure clusters, at the expense
+    of relying on the Hadoop config propagated from the YARN node manager
+    launching the container.
+    
+    (cherry picked from commit eff2156aa181b53882bfc59c15bf2c0dc99901be)
+
+commit 7ec0d7b3f02797ef80bd3e83a68627bb61d6e053
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Tue Nov 24 15:08:02 2015 -0600
+
+    [SPARK-11929][CORE] Make the repl log4j configuration override the root logger.
+    
+    In the default Spark distribution, there are currently two separate
+    log4j config files, with different default values for the root logger,
+    so that when running the shell you have a different default log level.
+    This makes the shell more usable, since the logs don't overwhelm the
+    output.
+    
+    But if you install a custom log4j.properties, you lose that, because
+    then it's going to be used no matter whether you're running a regular
+    app or the shell.
+    
+    With this change, the overriding of the log level is done differently;
+    the log level repl's main class (org.apache.spark.repl.Main) is used
+    to define the root logger's level when running the shell, defaulting
+    to WARN if it's not set explicitly.
+    
+    On a somewhat related change, the shell output about the "sc" variable
+    was changed a bit to contain a little more useful information about
+    the application, since when the root logger's log level is WARN, that
+    information is never shown to the user.
+    
+    Author: Marcelo Vanzin <vanzin@cloudera.com>
+    
+    Closes #9816 from vanzin/shell-logging.
+    
+    (cherry picked from commit e6dd237463d2de8c506f0735dfdb3f43e8122513)
+
+commit c312e63943957ff0dccffe77f3f17163ac82a037
+Author: Imran Rashid <irashid@cloudera.com>
+Date:   Tue Jan 5 17:14:02 2016 -0600
+
+    CLOUDERA-BUILD update spark version
+
+commit 4050606d6b90f13b1aa1e4619a019de3e3f2a94b
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Fri Dec 4 16:05:51 2015 -0800
+
+    CLOUDERA-BUILD. Revert "[SPARK-11783][SQL] Fixes execution Hive client when using remote Hive metastore"
+    
+    This reverts commit c7f95df5c6d8eb2e6f11cf58b704fea34326a5f2. CDH uses the
+    same version for execution and metadata; connecting to other metastores is
+    not supported. And removing this change speeds up the startup of apps that
+    use HiveContext.
+    
+    (cherry picked from commit fa708bcd592e76875d2a8077c924e748c5b9cea5)
+
+commit 10a981707ed5f5fe495aa0ba438fc1db1c01145d
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Mon Nov 30 16:53:31 2015 -0800
+
+    CLOUDERA-BUILD. CDH-35052. Write parquet legacy format by default.
+    
+    Otherwise Hive cannot read decimal fields.
+    
+    (cherry picked from commit 7086bcf8b48d05cf1c3a6f27e0df9714a5b0f0f8)
+
+commit cc2ea58c992f1335e780571c80d2558e990527e0
+Author: Mark Grover <mgrover@cloudera.com>
+Date:   Tue Oct 6 13:40:28 2015 -0700
+
+    CLOUDERA-BUILD. CDH-29819: Add spark-avro to Spark
+    
+    (cherry picked from commit 68137f06aea99009f64965245c7b27c3a5ec01bf)
+
+commit f10f45f6fc50f664f126155cd322f1b1abbae839
+Author: Mark Grover <mgrover@cloudera.com>
+Date:   Fri Nov 20 09:51:26 2015 -0800
+
+    CLOUDERA-BUILD. Revert "[SPARK-7743] [SQL] Parquet 1.7"
+    
+    (cherry picked from commit 69e6895092649b96cf322ef66dc42cd0ec1cd42c)
+
+commit 47367efac429368970e62a2906db048909def02d
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Thu Nov 12 15:57:18 2015 -0800
+
+    CLOUDERA-BUILD. CDH-33655. Use version of Spark defined in user configuration.
+    
+    During rolling upgrades, the activated parcel and the active client
+    configuration in /etc/spark may not match. This may cause jobs to fail to
+    launch because the config is tailored for a particular Spark version.
+    
+    This change detects when the versions do not match and runs Spark from the
+    version defined in the configuration, warning the user that this is
+    happening.
+    
+    (cherry picked from commit 5ce1d7c599364a07ce0b98793b56e302e0025c23)
+
+commit ff4215307139a9e81d6dc89536dc62184618ff8a
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Thu Nov 5 17:03:18 2015 -0800
+
+    CLOUDERA-BUILD. Remove Snappy from codecs that support concatenation.
+    
+    CDH ships an older version of Snappy that doesn't support the feature.
+    
+    (cherry picked from commit 75db083a7e0ef62e520636919e7d9682f5c1f3aa)
+
+commit 7940fb0894c6647bf7f78bcb52e72d211c7725b5
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Fri Oct 23 13:35:07 2015 -0700
+
+    CLOUDERA-BUILD. Revert "[SPARK-11153][SQL] Disables Parquet filter push-down for string and binary columns"
+    
+    This reverts commit 89e6db6150704deab46232352d1986bc1449883b.
+    
+    (cherry picked from commit 5b602eee13705bdd7d946bb17dd9135b918c00bd)
+
+commit f3e5b902431a89c210005b20dafe909d180dd9c3
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Fri Oct 9 11:33:04 2015 -0700
+
+    CLOUDERA-BUILD. CDH-31874. Remove scripts that don't work from package.
+    
+    CDH doesn't include the code that these scripts need, so they just don't
+    work.
+    
+    (cherry picked from commit 52aff1dea7e3e6fef3793a78a68fbe3a50e47a6f)
+
+commit 9b42a59736b3a9181aee80b984d7b16ca2ec1be1
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Thu Aug 13 17:47:56 2015 -0700
+
+    CLOUDERA-BUILD. More dependency tweaks.
+    
+    Remove a few more things from the Spark assemblies, since they're
+    already provided in CDH.
+    
+    (cherry picked from commit ec20f3dcb66ff93bed482e46f8716e7c729f852c)
+
+commit 3e1e89208c6fe6007ae24e0cd4d45737594fecc6
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Aug 26 11:14:32 2015 -0700
+
+    CLOUDERA-BUILD. CDH-30545. Allow overriding the mvn command to run.
+    
+    (cherry picked from commit cf4cec5e562a498d32031bce4126bea189e3d2ee)
+
+commit 6c5fa0339e01332ba4b16f878a74f293e5191fdc
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Aug 19 14:25:02 2015 -0700
+
+    CLOUDERA-BUILD. Partial revert of 5e6fdc6 (SPARK-9407).
+    
+    PARQUET-201 is fixed in CDH. Keep the refactoring, but remove the hack.
+    
+    (cherry picked from commit 2fc45c0c30433e42e4c8df9692951ace22c2e499)
+
+commit b546491b0deeffbbe6a68ec30b6b499100f7ac3a
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Thu Aug 13 15:47:28 2015 -0700
+
+    CLOUDERA-BUILD. CDH-29312. Package kafka backend with Spark.
+    
+    This makes it easy to deploy streaming applications that use Kafka
+    in CDH, by removing the requirement to package the integration bits
+    with the application.
+    
+    (cherry picked from commit 8c4dd4b9be8cf4841816fe4953934705e693c194)
+
+commit a816dd1b4859b0064019daa4d48f85e69c9c11d9
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Mon Aug 3 17:44:23 2015 -0700
+
+    CLOUDERA-BUILD. Use Hive 1.1 for HiveQL execution.
+    
+    A few changes:
+    - Revert to TOK_UNION (instead of TOK_UNIONALL added in 1.2)
+    - Set SCRATCHDIR in configuration appropriately so that HiveContext
+      doesn't pollute /tmp
+    - Fix some dependencies so that all datanucleus artifacts are compatible.
+    - Lock execution and metastore versions since they're the same
+      in CDH. Update VersionsSuite to only test that case (to speed it up).
+    - Disable tests that fail on CDH (because it has different deps).
+    - Disable code that uses new grammar added in Hive 1.2.
+    - Reduce parallelism of a test to avoid shuffle memory tracker issues.
+    - Disable the thrift server (not supported in CDH).
+    - Disable tests that are incompatible with Hive 1.1 due to incompatible
+      DecimalType support.
+    
+    (cherry picked from commit 89ac1c547858748b8995cf22d7d9aa298264f6cb)
+
+commit cb265791ac14b87e47461d3e08373a3b1d0ad0f4
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Tue Jul 21 11:10:01 2015 -0700
+
+    CLOUDERA-BUILD. Allow multiple paths in HADOOP_CONF_DIR.
+    
+    This allows us to append Hive configuration to the YARN configuration
+    CM generates for Spark.
+    
+    (cherry picked from commit fadb73fa384a5239b95dc88f0659c38d21eb1cb1)
+
+commit 42a401412517cadb288092cd88bed09a2f420231
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Mon Jul 13 10:45:38 2015 -0700
+
+    CLOUDERA-BUILD. CDH-26527. Package flume backend in Spark assembly.
+    
+    This makes it easier for applications that use the flume backend to
+    be deployed in CDH, since they don't need to worry about how to
+    distribute / package that dependency.
+    
+    (cherry picked from commit bfcd035dc3cc59ad83ad7cc8f60553a6b468b314)
+
+commit 2736be7d6a9f0a4b55c9b63de12088c379dc61b0
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Jul 1 16:20:06 2015 -0700
+
+    CLOUDERA-BUILD. Disable slow tests.
+    
+    These tests consistently fail in our build machines due to timeouts.
+    SparkListenerWithClusterSuite also seems racy, on top of the timeout issue.
+    
+    (cherry picked from commit 7e5dbb9b795bc54f305cdf2e17c60f4679887a87)
+
+commit 6abe381430ed3a306be19de71e9515c58a10caaa
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Mon Jun 8 14:06:11 2015 -0700
+
+    CLOUDERA-BUILD. Fix AkkaRpcEnv for old akka version.
+    
+    (cherry picked from commit e9016361b76fac9fabf61d3fd05316dd82fc6f0e)
+
+commit 5711a21c401065d518132d832bca0ed006bb047f
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Apr 29 13:46:54 2015 -0700
+
+    CLOUDERA-BUILD. Disable InputStreamsSuite.
+    
+    These tests tend to hang and cause builds to time out.
+    
+    (cherry picked from commit 4c277e53dc4fa17133ab06f2329e4e69da3dc049)
+
+commit 31fba10a7454000e27459ebcb9fc2b0db0bb3109
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Tue Feb 24 16:31:15 2015 -0800
+
+    CLOUDERA-BUILD. Deploy the assembly artifact.
+    
+    This is needed for Oozie to consume it.
+    
+    (cherry picked from commit b3263cab3e12d0d72c58b0214966e3d035b58791)
+
+commit c1bdf49b3968e04ddfa2f49ce19123e204211aca
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Feb 18 13:26:05 2015 -0800
+
+    CLOUDERA-BUILD. CDH-25336. Disable Yarn classpath tests.
+    
+    The Snappy library used in CDH does not play well with the class
+    loaders used when enabling userClassPathFirst.
+    
+    (cherry picked from commit 45dc8e1427ea06e45c0e31f8b4afba58e970a084)
+
+commit 49a9e61130abffa93997e31f7a1eff63b982aa2d
+Author: Andrew Bayer <andrew.bayer@gmail.com>
+Date:   Fri Jan 16 13:02:36 2015 -0800
+
+    CLOUDERA-BUILD. Add profile for faster package builds
+    
+    (cherry picked from commit de79f1b48437031e0a7493bbabae37925bd1553f)
+
+commit f23ec2c4e1d8ce4b638adb1ac221f0609b5cc8d2
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Nov 12 17:00:49 2014 -0800
+
+    CLOUDERA-BUILD. Exclude hadoop-aws dependency.
+    
+    It's not used by Spark and it brings in an older com.fasterxml.jackson
+    dependency which conflicts with the version used by other Spark
+    dependencies.
+    
+    (cherry picked from commit a9532a345490fb34cd1ee31a67aea3a4f94a37c4)
+    (cherry picked from commit 81aeb7a96f6f02c9bfbdcea90bd299aa9dba1452)
+
+commit e28ea44efdf0108fe9101484522c505d0dba1aea
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Thu Nov 6 12:55:59 2014 -0800
+
+    CLOUDERA-BUILD. Revert "[SPARK-2805] Upgrade Akka to 2.3.4"
+    
+    This reverts commit 411cf29fff011561f0093bb6101af87842828369.
+    
+    (cherry picked from commit b36742cf56ae6c4f0b2d433674c2ee3e519c15e8)
+    
+    Conflicts:
+    	pom.xml
+    
+    (cherry picked from commit 747a41cea926ae5630c8a74ad7c797b4311c02c7)
+
+commit 0f5eee614ba0a4bb2775fd5482401c6777db97eb
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+Date:   Wed Nov 5 11:45:46 2014 -0800
+
+    CLOUDERA-BUILD. Changes for CDH build.
+    
+    Adjusts dependency versions, adds Cloudera repos, and triggers
+    all needed profiles based on the "cdh.build" property.
+    
+    (cherry picked from commit 018bcc32602c05ebb8b59d7bed8158cf25b00ca4)

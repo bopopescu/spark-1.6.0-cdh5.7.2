@@ -1,0 +1,27 @@
+From 687141b9c555d718bb93f9bb744b20109ab8dd47 Mon Sep 17 00:00:00 2001
+From: Imran Rashid <irashid@cloudera.com>
+Date: Mon, 28 Mar 2016 15:57:51 -0500
+Subject: [PATCH 199/201] CLOUDERA-BUILD. [CDH-38800]  Turn off bogus warnings
+ about deprecated memory configuration options
+
+(cherry picked from commit 6c31b0ce0396dcf1f1c9f0a698dca38c353b60e4)
+---
+ .../main/scala/org/apache/spark/SparkConf.scala    |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/SparkConf.scala b/core/src/main/scala/org/apache/spark/SparkConf.scala
+index d3384fb..a8a8eff 100644
+--- a/core/src/main/scala/org/apache/spark/SparkConf.scala
++++ b/core/src/main/scala/org/apache/spark/SparkConf.scala
+@@ -437,7 +437,7 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging {
+ 
+     // Warn against deprecated memory fractions (unless legacy memory management mode is enabled)
+     val legacyMemoryManagementKey = "spark.memory.useLegacyMode"
+-    val legacyMemoryManagement = getBoolean(legacyMemoryManagementKey, false)
++    val legacyMemoryManagement = getBoolean(legacyMemoryManagementKey, true)
+     if (!legacyMemoryManagement) {
+       val keyset = deprecatedMemoryKeys.toSet
+       val detected = settings.keys().asScala.filter(keyset.contains)
+-- 
+1.7.9.5
+

@@ -1,0 +1,83 @@
+From d2696a09962e5ffeaa3ccdac6a21c57014316f27 Mon Sep 17 00:00:00 2001
+From: Shixiong Zhu <shixiong@databricks.com>
+Date: Thu, 7 Jan 2016 17:37:46 -0800
+Subject: [PATCH 108/201] [SPARK-12507][STREAMING][DOCUMENT] Expose
+ closeFileAfterWrite and allowBatching
+ configurations for Streaming
+
+/cc tdas brkyvz
+
+Author: Shixiong Zhu <shixiong@databricks.com>
+
+Closes #10453 from zsxwing/streaming-conf.
+
+(cherry picked from commit c94199e977279d9b4658297e8108b46bdf30157b)
+Signed-off-by: Tathagata Das <tathagata.das1565@gmail.com>
+(cherry picked from commit a7c36362fb9532183b7b6a0ad5020f02b816a9b3)
+---
+ docs/configuration.md               |   18 ++++++++++++++++++
+ docs/streaming-programming-guide.md |   12 +++++-------
+ 2 files changed, 23 insertions(+), 7 deletions(-)
+
+diff --git a/docs/configuration.md b/docs/configuration.md
+index 7ad201f..a151269 100644
+--- a/docs/configuration.md
++++ b/docs/configuration.md
+@@ -1610,6 +1610,24 @@ Apart from these, the following properties are also available, and may be useful
+     How many batches the Spark Streaming UI and status APIs remember before garbage collecting.
+   </td>
+ </tr>
++<tr>
++  <td><code>spark.streaming.driver.writeAheadLog.closeFileAfterWrite</code></td>
++  <td>false</td>
++  <td>
++    Whether to close the file after writing a write ahead log record on the driver. Set this to 'true'
++    when you want to use S3 (or any file system that does not support flushing) for the metadata WAL
++    on the driver.
++  </td>
++</tr>
++<tr>
++  <td><code>spark.streaming.receiver.writeAheadLog.closeFileAfterWrite</code></td>
++  <td>false</td>
++  <td>
++    Whether to close the file after writing a write ahead log record on the receivers. Set this to 'true'
++    when you want to use S3 (or any file system that does not support flushing) for the data WAL
++    on the receivers.
++  </td>
++</tr>
+ </table>
+ 
+ #### SparkR
+diff --git a/docs/streaming-programming-guide.md b/docs/streaming-programming-guide.md
+index ed6b28c..55adf38 100644
+--- a/docs/streaming-programming-guide.md
++++ b/docs/streaming-programming-guide.md
+@@ -1820,7 +1820,11 @@ To run a Spark Streaming applications, you need to have the following.
+   to increase aggregate throughput. Additionally, it is recommended that the replication of the
+   received data within Spark be disabled when the write ahead log is enabled as the log is already
+   stored in a replicated storage system. This can be done by setting the storage level for the
+-  input stream to `StorageLevel.MEMORY_AND_DISK_SER`.
++  input stream to `StorageLevel.MEMORY_AND_DISK_SER`. While using S3 (or any file system that
++  does not support flushing) for _write ahead logs_, please remember to enable
++  `spark.streaming.driver.writeAheadLog.closeFileAfterWrite` and
++  `spark.streaming.receiver.writeAheadLog.closeFileAfterWrite`. See
++  [Spark Streaming Configuration](configuration.html#spark-streaming) for more details.
+ 
+ - *Setting the max receiving rate* - If the cluster resources is not large enough for the streaming
+   application to process data as fast as it is being received, the receivers can be rate limited
+@@ -1858,12 +1862,6 @@ contains serialized Scala/Java/Python objects and trying to deserialize objects
+ modified classes may lead to errors. In this case, either start the upgraded app with a different
+ checkpoint directory, or delete the previous checkpoint directory.
+ 
+-### Other Considerations
+-{:.no_toc}
+-If the data is being received by the receivers faster than what can be processed,
+-you can limit the rate by setting the [configuration parameter](configuration.html#spark-streaming)
+-`spark.streaming.receiver.maxRate`.
+-
+ ***
+ 
+ ## Monitoring Applications
+-- 
+1.7.9.5
+

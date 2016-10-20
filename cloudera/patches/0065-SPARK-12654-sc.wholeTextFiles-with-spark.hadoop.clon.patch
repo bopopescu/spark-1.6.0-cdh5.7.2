@@ -1,0 +1,59 @@
+From 00a2971aca9a2797b67171413ce8a2c656b6cbce Mon Sep 17 00:00:00 2001
+From: Thomas Graves <tgraves@apache.org>
+Date: Fri, 8 Jan 2016 14:38:19 -0600
+Subject: [PATCH 065/201] =?UTF-8?q?[SPARK-12654]=20sc.wholeTextFiles=20with=20?=
+ =?UTF-8?q?spark.hadoop.cloneConf=3Dtrue=20fail=E2=80=A6?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+…s on secure Hadoop
+
+https://issues.apache.org/jira/browse/SPARK-12654
+
+So the bug here is that WholeTextFileRDD.getPartitions has:
+val conf = getConf
+in getConf if the cloneConf=true it creates a new Hadoop Configuration. Then it uses that to create a new newJobContext.
+The newJobContext will copy credentials around, but credentials are only present in a JobConf not in a Hadoop Configuration. So basically when it is cloning the hadoop configuration its changing it from a JobConf to Configuration and dropping the credentials that were there. NewHadoopRDD just uses the conf passed in for the getPartitions (not getConf) which is why it works.
+
+Author: Thomas Graves <tgraves@staydecay.corp.gq1.yahoo.com>
+
+Closes #10651 from tgravescs/SPARK-12654.
+
+(cherry picked from commit 553fd7b912a32476b481fd3f80c1d0664b6c6484)
+Signed-off-by: Tom Graves <tgraves@yahoo-inc.com>
+(cherry picked from commit faf094c7c35baf0e73290596d4ca66b7d083ed5b)
+---
+ .../scala/org/apache/spark/rdd/NewHadoopRDD.scala  |    9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/rdd/NewHadoopRDD.scala b/core/src/main/scala/org/apache/spark/rdd/NewHadoopRDD.scala
+index 86f38ae..c8b4f30 100644
+--- a/core/src/main/scala/org/apache/spark/rdd/NewHadoopRDD.scala
++++ b/core/src/main/scala/org/apache/spark/rdd/NewHadoopRDD.scala
+@@ -24,6 +24,7 @@ import scala.reflect.ClassTag
+ 
+ import org.apache.hadoop.conf.{Configurable, Configuration}
+ import org.apache.hadoop.io.Writable
++import org.apache.hadoop.mapred.JobConf
+ import org.apache.hadoop.mapreduce._
+ import org.apache.hadoop.mapreduce.lib.input.{CombineFileSplit, FileSplit}
+ 
+@@ -95,7 +96,13 @@ class NewHadoopRDD[K, V](
+       // issues, this cloning is disabled by default.
+       NewHadoopRDD.CONFIGURATION_INSTANTIATION_LOCK.synchronized {
+         logDebug("Cloning Hadoop Configuration")
+-        new Configuration(conf)
++        // The Configuration passed in is actually a JobConf and possibly contains credentials.
++        // To keep those credentials properly we have to create a new JobConf not a Configuration.
++        if (conf.isInstanceOf[JobConf]) {
++          new JobConf(conf)
++        } else {
++          new Configuration(conf)
++        }
+       }
+     } else {
+       conf
+-- 
+1.7.9.5
+

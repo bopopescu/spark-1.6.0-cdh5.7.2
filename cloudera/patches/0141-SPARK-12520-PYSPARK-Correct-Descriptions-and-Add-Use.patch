@@ -1,0 +1,49 @@
+From 5423e022a09987b94c2a021d8359741de74f3831 Mon Sep 17 00:00:00 2001
+From: gatorsmile <gatorsmile@gmail.com>
+Date: Sun, 27 Dec 2015 23:18:48 -0800
+Subject: [PATCH 141/201] [SPARK-12520] [PYSPARK] Correct Descriptions and Add
+ Use Cases in Equi-Join
+
+After reading the JIRA https://issues.apache.org/jira/browse/SPARK-12520, I double checked the code.
+
+For example, users can do the Equi-Join like
+  ```df.join(df2, 'name', 'outer').select('name', 'height').collect()```
+- There exists a bug in 1.5 and 1.4. The code just ignores the third parameter (join type) users pass. However, the join type we called is `Inner`, even if the user-specified type is the other type (e.g., `Outer`).
+- After a PR: https://github.com/apache/spark/pull/8600, the 1.6 does not have such an issue, but the description has not been updated.
+
+Plan to submit another PR to fix 1.5 and issue an error message if users specify a non-inner join type when using Equi-Join.
+
+Author: gatorsmile <gatorsmile@gmail.com>
+
+Closes #10477 from gatorsmile/pyOuterJoin.
+
+(cherry picked from commit b8da77ef776ab9cdc130a70293d75e7bdcdf95b0)
+---
+ python/pyspark/sql/dataframe.py |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/python/pyspark/sql/dataframe.py b/python/pyspark/sql/dataframe.py
+index b15b8d7..a0fdaf3 100644
+--- a/python/pyspark/sql/dataframe.py
++++ b/python/pyspark/sql/dataframe.py
+@@ -608,13 +608,16 @@ class DataFrame(object):
+         :param on: a string for join column name, a list of column names,
+             , a join expression (Column) or a list of Columns.
+             If `on` is a string or a list of string indicating the name of the join column(s),
+-            the column(s) must exist on both sides, and this performs an inner equi-join.
++            the column(s) must exist on both sides, and this performs an equi-join.
+         :param how: str, default 'inner'.
+             One of `inner`, `outer`, `left_outer`, `right_outer`, `leftsemi`.
+ 
+         >>> df.join(df2, df.name == df2.name, 'outer').select(df.name, df2.height).collect()
+         [Row(name=None, height=80), Row(name=u'Alice', height=None), Row(name=u'Bob', height=85)]
+ 
++        >>> df.join(df2, 'name', 'outer').select('name', 'height').collect()
++        [Row(name=u'Tom', height=80), Row(name=u'Alice', height=None), Row(name=u'Bob', height=85)]
++
+         >>> cond = [df.name == df3.name, df.age == df3.age]
+         >>> df.join(df3, cond, 'outer').select(df.name, df3.age).collect()
+         [Row(name=u'Bob', age=5), Row(name=u'Alice', age=2)]
+-- 
+1.7.9.5
+

@@ -1,0 +1,48 @@
+From 0da1341ab199734145ea8616c5ff2a9ca28cc32d Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Wed, 30 Sep 2015 12:24:03 -0700
+Subject: [PATCH 027/201] CLOUDERA-BUILD. CDH-32176. Add option to not
+ localize configuration.
+
+Oozie does not have control over env variables that define where the
+hadoop config lives, and sometimes Spark may fail to localize that
+configuration; this change adds a config option to disable localization
+so that Oozie can launch Spark jobs on secure clusters, at the expense
+of relying on the Hadoop config propagated from the YARN node manager
+launching the container.
+
+(cherry picked from commit eff2156aa181b53882bfc59c15bf2c0dc99901be)
+---
+ .../org/apache/spark/deploy/yarn/Client.scala      |   16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/yarn/src/main/scala/org/apache/spark/deploy/yarn/Client.scala b/yarn/src/main/scala/org/apache/spark/deploy/yarn/Client.scala
+index 1f3e043..1102a8c 100644
+--- a/yarn/src/main/scala/org/apache/spark/deploy/yarn/Client.scala
++++ b/yarn/src/main/scala/org/apache/spark/deploy/yarn/Client.scala
+@@ -535,13 +535,15 @@ private[spark] class Client(
+       }
+     }
+ 
+-    Seq("HADOOP_CONF_DIR", "YARN_CONF_DIR").foreach { envKey =>
+-      sys.env.get(envKey).toSeq.flatMap(_.split(File.pathSeparator)).foreach { path =>
+-        val dir = new File(path)
+-        if (dir.isDirectory()) {
+-          dir.listFiles().foreach { file =>
+-            if (file.isFile && !hadoopConfFiles.contains(file.getName())) {
+-              hadoopConfFiles(file.getName()) = file
++    if (sparkConf.getBoolean("spark.yarn.localizeConfig", true)) {
++      Seq("HADOOP_CONF_DIR", "YARN_CONF_DIR").foreach { envKey =>
++        sys.env.get(envKey).toSeq.flatMap(_.split(File.pathSeparator)).foreach { path =>
++          val dir = new File(path)
++          if (dir.isDirectory()) {
++            dir.listFiles().foreach { file =>
++              if (file.isFile && !hadoopConfFiles.contains(file.getName())) {
++                hadoopConfFiles(file.getName()) = file
++              }
+             }
+           }
+         }
+-- 
+1.7.9.5
+

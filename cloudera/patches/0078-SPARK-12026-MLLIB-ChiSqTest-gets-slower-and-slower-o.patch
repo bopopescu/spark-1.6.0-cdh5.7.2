@@ -1,0 +1,50 @@
+From 82597d7cf068656954a634712e1a4ccbac232b8b Mon Sep 17 00:00:00 2001
+From: Yuhao Yang <hhbyyh@gmail.com>
+Date: Wed, 13 Jan 2016 17:43:27 -0800
+Subject: [PATCH 078/201] [SPARK-12026][MLLIB] ChiSqTest gets slower and
+ slower over time when number of features is large
+
+jira: https://issues.apache.org/jira/browse/SPARK-12026
+
+The issue is valid as features.toArray.view.zipWithIndex.slice(startCol, endCol) becomes slower as startCol gets larger.
+
+I tested on local and the change can improve the performance and the running time was stable.
+
+Author: Yuhao Yang <hhbyyh@gmail.com>
+
+Closes #10146 from hhbyyh/chiSq.
+
+(cherry picked from commit 021dafc6a05a31dc22c9f9110dedb47a1f913087)
+Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+(cherry picked from commit a490787daa5ec11a5e30bc0df31f81edd54ccc6a)
+---
+ .../apache/spark/mllib/stat/test/ChiSqTest.scala   |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/mllib/src/main/scala/org/apache/spark/mllib/stat/test/ChiSqTest.scala b/mllib/src/main/scala/org/apache/spark/mllib/stat/test/ChiSqTest.scala
+index 23c8d7c..1c583a4 100644
+--- a/mllib/src/main/scala/org/apache/spark/mllib/stat/test/ChiSqTest.scala
++++ b/mllib/src/main/scala/org/apache/spark/mllib/stat/test/ChiSqTest.scala
+@@ -109,7 +109,9 @@ private[stat] object ChiSqTest extends Logging {
+           }
+           i += 1
+           distinctLabels += label
+-          features.toArray.view.zipWithIndex.slice(startCol, endCol).map { case (feature, col) =>
++          val brzFeatures = features.toBreeze
++          (startCol until endCol).map { col =>
++            val feature = brzFeatures(col)
+             allDistinctFeatures(col) += feature
+             (col, feature, label)
+           }
+@@ -122,7 +124,7 @@ private[stat] object ChiSqTest extends Logging {
+           pairCounts.keys.filter(_._1 == startCol).map(_._3).toArray.distinct.zipWithIndex.toMap
+       }
+       val numLabels = labels.size
+-      pairCounts.keys.groupBy(_._1).map { case (col, keys) =>
++      pairCounts.keys.groupBy(_._1).foreach { case (col, keys) =>
+         val features = keys.map(_._2).toArray.distinct.zipWithIndex.toMap
+         val numRows = features.size
+         val contingency = new BDM(numRows, numLabels, new Array[Double](numRows * numLabels))
+-- 
+1.7.9.5
+

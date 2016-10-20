@@ -1,0 +1,101 @@
+From 124a71fe7eaee16d0d3c25088730759f74644f12 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Wed, 13 Jan 2016 12:39:32 -0800
+Subject: [PATCH 029/201] CLOUDERA-BUILD. CDH-28174. Enable netty-based file
+ server.
+
+SPARK-11140 was actually backported to Spark 1.6, but in a disabled
+state; this change just undoes the disabling so that the Netty code
+is used to transfer files, instead of the HTTP server.
+---
+ .../spark/rpc/netty/HttpBasedFileServer.scala      |   59 --------------------
+ .../org/apache/spark/rpc/netty/NettyRpcEnv.scala   |    7 +--
+ 2 files changed, 1 insertion(+), 65 deletions(-)
+ delete mode 100644 core/src/main/scala/org/apache/spark/rpc/netty/HttpBasedFileServer.scala
+
+diff --git a/core/src/main/scala/org/apache/spark/rpc/netty/HttpBasedFileServer.scala b/core/src/main/scala/org/apache/spark/rpc/netty/HttpBasedFileServer.scala
+deleted file mode 100644
+index 8a7a409..0000000
+--- a/core/src/main/scala/org/apache/spark/rpc/netty/HttpBasedFileServer.scala
++++ /dev/null
+@@ -1,59 +0,0 @@
+-/*
+- * Licensed to the Apache Software Foundation (ASF) under one or more
+- * contributor license agreements.  See the NOTICE file distributed with
+- * this work for additional information regarding copyright ownership.
+- * The ASF licenses this file to You under the Apache License, Version 2.0
+- * (the "License"); you may not use this file except in compliance with
+- * the License.  You may obtain a copy of the License at
+- *
+- *    http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package org.apache.spark.rpc.netty
+-
+-import java.io.File
+-
+-import org.apache.spark.{HttpFileServer, SecurityManager, SparkConf}
+-import org.apache.spark.rpc.RpcEnvFileServer
+-
+-private[netty] class HttpBasedFileServer(conf: SparkConf, securityManager: SecurityManager)
+-  extends RpcEnvFileServer {
+-
+-  @volatile private var httpFileServer: HttpFileServer = _
+-
+-  override def addFile(file: File): String = {
+-    getFileServer().addFile(file)
+-  }
+-
+-  override def addJar(file: File): String = {
+-    getFileServer().addJar(file)
+-  }
+-
+-  def shutdown(): Unit = {
+-    if (httpFileServer != null) {
+-      httpFileServer.stop()
+-    }
+-  }
+-
+-  private def getFileServer(): HttpFileServer = {
+-    if (httpFileServer == null) synchronized {
+-      if (httpFileServer == null) {
+-        httpFileServer = startFileServer()
+-      }
+-    }
+-    httpFileServer
+-  }
+-
+-  private def startFileServer(): HttpFileServer = {
+-    val fileServerPort = conf.getInt("spark.fileserver.port", 0)
+-    val server = new HttpFileServer(conf, securityManager, fileServerPort)
+-    server.initialize()
+-    server
+-  }
+-
+-}
+diff --git a/core/src/main/scala/org/apache/spark/rpc/netty/NettyRpcEnv.scala b/core/src/main/scala/org/apache/spark/rpc/netty/NettyRpcEnv.scala
+index a53bc5e..5cbc174 100644
+--- a/core/src/main/scala/org/apache/spark/rpc/netty/NettyRpcEnv.scala
++++ b/core/src/main/scala/org/apache/spark/rpc/netty/NettyRpcEnv.scala
+@@ -55,12 +55,7 @@ private[netty] class NettyRpcEnv(
+ 
+   private val streamManager = new NettyStreamManager(this)
+ 
+-  private val _fileServer =
+-    if (conf.getBoolean("spark.rpc.useNettyFileServer", false)) {
+-      streamManager
+-    } else {
+-      new HttpBasedFileServer(conf, securityManager)
+-    }
++  private val _fileServer = streamManager
+ 
+   private val transportContext = new TransportContext(transportConf,
+     new NettyRpcHandler(dispatcher, this, streamManager))
+-- 
+1.7.9.5
+

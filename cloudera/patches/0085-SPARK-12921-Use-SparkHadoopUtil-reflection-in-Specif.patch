@@ -1,0 +1,43 @@
+From e1a7d01d47eaa1e8bff20fbfa0d9ce1c38bce7f9 Mon Sep 17 00:00:00 2001
+From: Josh Rosen <joshrosen@databricks.com>
+Date: Wed, 20 Jan 2016 16:10:28 -0800
+Subject: [PATCH 085/201] [SPARK-12921] Use SparkHadoopUtil reflection in
+ SpecificParquetRecordReaderBase
+
+It looks like there's one place left in the codebase, SpecificParquetRecordReaderBase, where we didn't use SparkHadoopUtil's reflective accesses of TaskAttemptContext methods, which could create problems when using a single Spark artifact with both Hadoop 1.x and 2.x.
+
+Author: Josh Rosen <joshrosen@databricks.com>
+
+Closes #10843 from JoshRosen/SPARK-12921.
+
+(cherry picked from commit 40fa21856aded0e8b0852cdc2d8f8bc577891908)
+---
+ .../parquet/SpecificParquetRecordReaderBase.java   |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java b/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java
+index 48b2498..f429589 100644
+--- a/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java
++++ b/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java
+@@ -57,6 +57,8 @@ import parquet.hadoop.metadata.ParquetMetadata;
+ import parquet.hadoop.util.ConfigurationUtil;
+ import parquet.schema.MessageType;
+ 
++import org.apache.spark.deploy.SparkHadoopUtil;
++
+ /**
+  * Base class for custom RecordReaaders for Parquet that directly materialize to `T`.
+  * This class handles computing row groups, filtering on them, setting up the column readers,
+@@ -81,7 +83,8 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
+ 
+   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
+       throws IOException, InterruptedException {
+-    Configuration configuration = taskAttemptContext.getConfiguration();
++    Configuration configuration =
++      SparkHadoopUtil.get().getConfigurationFromJobContext(taskAttemptContext);
+     ParquetInputSplit split = (ParquetInputSplit)inputSplit;
+     this.file = split.getPath();
+     long[] rowGroupOffsets = split.getRowGroupOffsets();
+-- 
+1.7.9.5
+

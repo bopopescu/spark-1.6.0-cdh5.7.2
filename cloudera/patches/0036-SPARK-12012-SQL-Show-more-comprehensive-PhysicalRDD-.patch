@@ -1,0 +1,63 @@
+From ee0428726145f276752c39dd5de9957221ea80e7 Mon Sep 17 00:00:00 2001
+From: Cheng Lian <lian@databricks.com>
+Date: Wed, 9 Dec 2015 23:30:42 +0800
+Subject: [PATCH 036/201] [SPARK-12012][SQL] Show more comprehensive
+ PhysicalRDD metadata when visualizing SQL query
+ plan
+
+This PR adds a `private[sql]` method `metadata` to `SparkPlan`, which can be used to describe detail information about a physical plan during visualization. Specifically, this PR uses this method to provide details of `PhysicalRDD`s translated from a data source relation. For example, a `ParquetRelation` converted from Hive metastore table `default.psrc` is now shown as the following screenshot:
+
+![image](https://cloud.githubusercontent.com/assets/230655/11526657/e10cb7e6-9916-11e5-9afa-f108932ec890.png)
+
+And here is the screenshot for a regular `ParquetRelation` (not converted from Hive metastore table) loaded from a really long path:
+
+![output](https://cloud.githubusercontent.com/assets/230655/11680582/37c66460-9e94-11e5-8f50-842db5309d5a.png)
+
+Author: Cheng Lian <lian@databricks.com>
+
+Closes #10004 from liancheng/spark-12012.physical-rdd-metadata.
+
+(cherry picked from commit 6e1c55eac4849669e119ce0d51f6d051830deb9f)
+---
+ .../apache/spark/sql/execution/SparkPlanInfo.scala |    3 ++-
+ .../spark/sql/execution/ui/SparkPlanGraph.scala    |    4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/SparkPlanInfo.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/SparkPlanInfo.scala
+index 486ce34..4f750ad 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/SparkPlanInfo.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/SparkPlanInfo.scala
+@@ -30,6 +30,7 @@ class SparkPlanInfo(
+     val nodeName: String,
+     val simpleString: String,
+     val children: Seq[SparkPlanInfo],
++    val metadata: Map[String, String],
+     val metrics: Seq[SQLMetricInfo])
+ 
+ private[sql] object SparkPlanInfo {
+@@ -41,6 +42,6 @@ private[sql] object SparkPlanInfo {
+     }
+     val children = plan.children.map(fromSparkPlan)
+ 
+-    new SparkPlanInfo(plan.nodeName, plan.simpleString, children, metrics)
++    new SparkPlanInfo(plan.nodeName, plan.simpleString, children, plan.metadata, metrics)
+   }
+ }
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/ui/SparkPlanGraph.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/ui/SparkPlanGraph.scala
+index 3aabea4..3a6eff9 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/ui/SparkPlanGraph.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/ui/SparkPlanGraph.scala
+@@ -66,8 +66,8 @@ private[sql] object SparkPlanGraph {
+         SQLMetrics.getMetricParam(metric.metricParam))
+     }
+     val node = SparkPlanGraphNode(
+-      nodeIdGenerator.getAndIncrement(), planInfo.nodeName, planInfo.simpleString,
+-      Map(), metrics)
++      nodeIdGenerator.getAndIncrement(), planInfo.nodeName,
++      planInfo.simpleString, planInfo.metadata, metrics)
+ 
+     nodes += node
+     val childrenNodes = planInfo.children.map(
+-- 
+1.7.9.5
+

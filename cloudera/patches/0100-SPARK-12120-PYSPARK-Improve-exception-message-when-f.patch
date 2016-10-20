@@ -1,0 +1,93 @@
+From 6e4fb656ac7f7d6a6586eb6a4057ff18116ee758 Mon Sep 17 00:00:00 2001
+From: Jeff Zhang <zjffdu@apache.org>
+Date: Sun, 24 Jan 2016 12:29:26 -0800
+Subject: [PATCH 100/201] =?UTF-8?q?[SPARK-12120][PYSPARK]=20Improve=20except?=
+ =?UTF-8?q?ion=20message=20when=20failing=20to=20init=E2=80=A6?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+…ialize HiveContext in PySpark
+
+davies Mind to review ?
+
+This is the error message after this PR
+
+```
+15/12/03 16:59:53 WARN ObjectStore: Failed to get database default, returning NoSuchObjectException
+/Users/jzhang/github/spark/python/pyspark/sql/context.py:689: UserWarning: You must build Spark with Hive. Export 'SPARK_HIVE=true' and run build/sbt assembly
+  warnings.warn("You must build Spark with Hive. "
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/Users/jzhang/github/spark/python/pyspark/sql/context.py", line 663, in read
+    return DataFrameReader(self)
+  File "/Users/jzhang/github/spark/python/pyspark/sql/readwriter.py", line 56, in __init__
+    self._jreader = sqlContext._ssql_ctx.read()
+  File "/Users/jzhang/github/spark/python/pyspark/sql/context.py", line 692, in _ssql_ctx
+    raise e
+py4j.protocol.Py4JJavaError: An error occurred while calling None.org.apache.spark.sql.hive.HiveContext.
+: java.lang.RuntimeException: java.net.ConnectException: Call From jzhangMBPr.local/127.0.0.1 to 0.0.0.0:9000 failed on connection exception: java.net.ConnectException: Connection refused; For more details see:  http://wiki.apache.org/hadoop/ConnectionRefused
+	at org.apache.hadoop.hive.ql.session.SessionState.start(SessionState.java:522)
+	at org.apache.spark.sql.hive.client.ClientWrapper.<init>(ClientWrapper.scala:194)
+	at org.apache.spark.sql.hive.client.IsolatedClientLoader.createClient(IsolatedClientLoader.scala:238)
+	at org.apache.spark.sql.hive.HiveContext.executionHive$lzycompute(HiveContext.scala:218)
+	at org.apache.spark.sql.hive.HiveContext.executionHive(HiveContext.scala:208)
+	at org.apache.spark.sql.hive.HiveContext.functionRegistry$lzycompute(HiveContext.scala:462)
+	at org.apache.spark.sql.hive.HiveContext.functionRegistry(HiveContext.scala:461)
+	at org.apache.spark.sql.UDFRegistration.<init>(UDFRegistration.scala:40)
+	at org.apache.spark.sql.SQLContext.<init>(SQLContext.scala:330)
+	at org.apache.spark.sql.hive.HiveContext.<init>(HiveContext.scala:90)
+	at org.apache.spark.sql.hive.HiveContext.<init>(HiveContext.scala:101)
+	at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+	at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
+	at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+	at java.lang.reflect.Constructor.newInstance(Constructor.java:526)
+	at py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:234)
+	at py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:381)
+	at py4j.Gateway.invoke(Gateway.java:214)
+	at py4j.commands.ConstructorCommand.invokeConstructor(ConstructorCommand.java:79)
+	at py4j.commands.ConstructorCommand.execute(ConstructorCommand.java:68)
+	at py4j.GatewayConnection.run(GatewayConnection.java:209)
+	at java.lang.Thread.run(Thread.java:745)
+```
+
+Author: Jeff Zhang <zjffdu@apache.org>
+
+Closes #10126 from zjffdu/SPARK-12120.
+
+(cherry picked from commit e789b1d2c1eab6187f54424ed92697ca200c3101)
+Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+(cherry picked from commit f913f7ea080bc90bd967724e583f42b0a48075d9)
+---
+ python/pyspark/sql/context.py |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/python/pyspark/sql/context.py b/python/pyspark/sql/context.py
+index ba6915a..c7a326d 100644
+--- a/python/pyspark/sql/context.py
++++ b/python/pyspark/sql/context.py
+@@ -15,6 +15,7 @@
+ # limitations under the License.
+ #
+ 
++from __future__ import print_function
+ import sys
+ import warnings
+ import json
+@@ -682,9 +683,10 @@ class HiveContext(SQLContext):
+                 self._scala_HiveContext = self._get_hive_ctx()
+             return self._scala_HiveContext
+         except Py4JError as e:
+-            raise Exception("You must build Spark with Hive. "
+-                            "Export 'SPARK_HIVE=true' and run "
+-                            "build/sbt assembly", e)
++            print("You must build Spark with Hive. "
++                  "Export 'SPARK_HIVE=true' and run "
++                  "build/sbt assembly", file=sys.stderr)
++            raise
+ 
+     def _get_hive_ctx(self):
+         return self._jvm.HiveContext(self._jsc.sc())
+-- 
+1.7.9.5
+

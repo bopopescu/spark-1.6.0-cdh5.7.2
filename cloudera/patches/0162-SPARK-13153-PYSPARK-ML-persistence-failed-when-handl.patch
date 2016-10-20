@@ -1,0 +1,40 @@
+From aeac03d5ca3f8d113809e18bba523a5a2ff8f365 Mon Sep 17 00:00:00 2001
+From: Tommy YU <tummyyu@163.com>
+Date: Thu, 11 Feb 2016 18:38:49 -0800
+Subject: [PATCH 162/201] [SPARK-13153][PYSPARK] ML persistence failed when
+ handle no default value parameter
+
+Fix this defect by check default value exist or not.
+
+yanboliang Please help to review.
+
+Author: Tommy YU <tummyyu@163.com>
+
+Closes #11043 from Wenpei/spark-13153-handle-param-withnodefaultvalue.
+
+(cherry picked from commit d3e2e202994e063856c192e9fdd0541777b88e0e)
+Signed-off-by: Xiangrui Meng <meng@databricks.com>
+(cherry picked from commit 18661a2bb527adbd01e98158696a16f6d8162411)
+---
+ python/pyspark/ml/wrapper.py |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/python/pyspark/ml/wrapper.py b/python/pyspark/ml/wrapper.py
+index 4bcb4aa..09e360d 100644
+--- a/python/pyspark/ml/wrapper.py
++++ b/python/pyspark/ml/wrapper.py
+@@ -90,8 +90,9 @@ class JavaWrapper(Params):
+         for param in self.params:
+             if self._java_obj.hasParam(param.name):
+                 java_param = self._java_obj.getParam(param.name)
+-                value = _java2py(sc, self._java_obj.getOrDefault(java_param))
+-                self._paramMap[param] = value
++                if self._java_obj.isDefined(java_param):
++                    value = _java2py(sc, self._java_obj.getOrDefault(java_param))
++                    self._paramMap[param] = value
+ 
+     @staticmethod
+     def _empty_java_param_map():
+-- 
+1.7.9.5
+

@@ -1,0 +1,34 @@
+From acb4347ae010696eafcfc35712790d908d96199d Mon Sep 17 00:00:00 2001
+From: Josh Rosen <joshrosen@databricks.com>
+Date: Wed, 10 Feb 2016 11:02:41 -0800
+Subject: [PATCH 158/201] [SPARK-12921] Fix another non-reflective
+ TaskAttemptContext access in
+ SpecificParquetRecordReaderBase
+
+This is a minor followup to #10843 to fix one remaining place where we forgot to use reflective access of TaskAttemptContext methods.
+
+Author: Josh Rosen <joshrosen@databricks.com>
+
+Closes #11131 from JoshRosen/SPARK-12921-take-2.
+
+(cherry picked from commit 93f1d91755475a242456fe06e57bfca10f4d722f)
+---
+ .../parquet/SpecificParquetRecordReaderBase.java   |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java b/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java
+index f429589..14f7b5d 100644
+--- a/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java
++++ b/sql/core/src/main/java/org/apache/spark/sql/execution/datasources/parquet/SpecificParquetRecordReaderBase.java
+@@ -133,7 +133,7 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
+     this.readSupport = getReadSupportInstance(
+         (Class<? extends ReadSupport<T>>) getReadSupportClass(configuration));
+     ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
+-        taskAttemptContext.getConfiguration(), toSetMultiMap(fileMetadata), fileSchema));
++        configuration, toSetMultiMap(fileMetadata), fileSchema));
+     this.requestedSchema = readContext.getRequestedSchema();
+     this.fileSchema = fileSchema;
+     this.reader = new ParquetFileReader(configuration, file, blocks, requestedSchema.getColumns());
+-- 
+1.7.9.5
+

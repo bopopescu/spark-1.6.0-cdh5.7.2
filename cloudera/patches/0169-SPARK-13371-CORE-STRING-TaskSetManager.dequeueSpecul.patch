@@ -1,0 +1,113 @@
+From db272afcae28a8044febd08f0b9c338b949ac44f Mon Sep 17 00:00:00 2001
+From: Sean Owen <sowen@cloudera.com>
+Date: Thu, 18 Feb 2016 12:14:30 -0800
+Subject: [PATCH 169/201] [SPARK-13371][CORE][STRING]
+ TaskSetManager.dequeueSpeculativeTask compares
+ Option and String directly.
+
+## What changes were proposed in this pull request?
+
+Fix some comparisons between unequal types that cause IJ warnings and in at least one case a likely bug (TaskSetManager)
+
+## How was the this patch tested?
+
+Running Jenkins tests
+
+Author: Sean Owen <sowen@cloudera.com>
+
+Closes #11253 from srowen/SPARK-13371.
+
+(cherry picked from commit 78562535feb6e214520b29e0bbdd4b1302f01e93)
+Signed-off-by: Andrew Or <andrew@databricks.com>
+(cherry picked from commit 16f35c4c6e7e56bdb1402eab0877da6e8497cb3f)
+---
+ .../apache/spark/deploy/FaultToleranceTest.scala   |    2 +-
+ .../apache/spark/scheduler/TaskSetManager.scala    |    2 +-
+ .../scala/org/apache/spark/CheckpointSuite.scala   |    4 ++--
+ .../scala/org/apache/spark/PartitioningSuite.scala |    4 ++--
+ .../org/apache/spark/ui/UISeleniumSuite.scala      |    6 +++++-
+ 5 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/deploy/FaultToleranceTest.scala b/core/src/main/scala/org/apache/spark/deploy/FaultToleranceTest.scala
+index b4edb61..03b7cc9 100644
+--- a/core/src/main/scala/org/apache/spark/deploy/FaultToleranceTest.scala
++++ b/core/src/main/scala/org/apache/spark/deploy/FaultToleranceTest.scala
+@@ -252,7 +252,7 @@ private object FaultToleranceTest extends App with Logging {
+     val f = future {
+       try {
+         val res = sc.parallelize(0 until 10).collect()
+-        assertTrue(res.toList == (0 until 10))
++        assertTrue(res.toList == (0 until 10).toList)
+         true
+       } catch {
+         case e: Exception =>
+diff --git a/core/src/main/scala/org/apache/spark/scheduler/TaskSetManager.scala b/core/src/main/scala/org/apache/spark/scheduler/TaskSetManager.scala
+index b5afd9d..c0f4351 100644
+--- a/core/src/main/scala/org/apache/spark/scheduler/TaskSetManager.scala
++++ b/core/src/main/scala/org/apache/spark/scheduler/TaskSetManager.scala
+@@ -338,7 +338,7 @@ private[spark] class TaskSetManager(
+       if (TaskLocality.isAllowed(locality, TaskLocality.RACK_LOCAL)) {
+         for (rack <- sched.getRackForHost(host)) {
+           for (index <- speculatableTasks if canRunOnHost(index)) {
+-            val racks = tasks(index).preferredLocations.map(_.host).map(sched.getRackForHost)
++            val racks = tasks(index).preferredLocations.map(_.host).flatMap(sched.getRackForHost)
+             if (racks.contains(rack)) {
+               speculatableTasks -= index
+               return Some((index, TaskLocality.RACK_LOCAL))
+diff --git a/core/src/test/scala/org/apache/spark/CheckpointSuite.scala b/core/src/test/scala/org/apache/spark/CheckpointSuite.scala
+index 553d462..2000cd6 100644
+--- a/core/src/test/scala/org/apache/spark/CheckpointSuite.scala
++++ b/core/src/test/scala/org/apache/spark/CheckpointSuite.scala
+@@ -54,7 +54,7 @@ trait RDDCheckpointTester { self: SparkFunSuite =>
+     // Generate the final RDD using given RDD operation
+     val baseRDD = generateFatRDD()
+     val operatedRDD = op(baseRDD)
+-    val parentRDD = operatedRDD.dependencies.headOption.orNull
++    val parentDependency = operatedRDD.dependencies.headOption.orNull
+     val rddType = operatedRDD.getClass.getSimpleName
+     val numPartitions = operatedRDD.partitions.length
+ 
+@@ -82,7 +82,7 @@ trait RDDCheckpointTester { self: SparkFunSuite =>
+     }
+ 
+     // Test whether dependencies have been changed from its earlier parent RDD
+-    assert(operatedRDD.dependencies.head.rdd != parentRDD)
++    assert(operatedRDD.dependencies.head != parentDependency)
+ 
+     // Test whether the partitions have been changed from its earlier partitions
+     assert(operatedRDD.partitions.toList != partitionsBeforeCheckpoint.toList)
+diff --git a/core/src/test/scala/org/apache/spark/PartitioningSuite.scala b/core/src/test/scala/org/apache/spark/PartitioningSuite.scala
+index aa80287..3d31c78 100644
+--- a/core/src/test/scala/org/apache/spark/PartitioningSuite.scala
++++ b/core/src/test/scala/org/apache/spark/PartitioningSuite.scala
+@@ -163,8 +163,8 @@ class PartitioningSuite extends SparkFunSuite with SharedSparkContext with Priva
+     val hashP2 = new HashPartitioner(2)
+     assert(rangeP2 === rangeP2)
+     assert(hashP2 === hashP2)
+-    assert(hashP2 != rangeP2)
+-    assert(rangeP2 != hashP2)
++    assert(hashP2 !== rangeP2)
++    assert(rangeP2 !== hashP2)
+   }
+ 
+   test("partitioner preservation") {
+diff --git a/core/src/test/scala/org/apache/spark/ui/UISeleniumSuite.scala b/core/src/test/scala/org/apache/spark/ui/UISeleniumSuite.scala
+index d6d7e04..5e52275 100644
+--- a/core/src/test/scala/org/apache/spark/ui/UISeleniumSuite.scala
++++ b/core/src/test/scala/org/apache/spark/ui/UISeleniumSuite.scala
+@@ -285,7 +285,11 @@ class UISeleniumSuite extends SparkFunSuite with WebBrowser with Matchers with B
+         JInt(stageId) <- stage \ "stageId"
+         JInt(attemptId) <- stage \ "attemptId"
+       } {
+-        val exp = if (attemptId == 0 && stageId == 1) StageStatus.FAILED else StageStatus.COMPLETE
++        val exp = if (attemptId.toInt == 0 && stageId.toInt == 1) {
++          StageStatus.FAILED
++        } else {
++          StageStatus.COMPLETE
++        }
+         status should be (exp.name())
+       }
+ 
+-- 
+1.7.9.5
+

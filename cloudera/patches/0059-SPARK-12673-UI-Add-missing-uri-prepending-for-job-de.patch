@@ -1,0 +1,42 @@
+From eaf84599a7c3b75b2ded104821101d652c1881ad Mon Sep 17 00:00:00 2001
+From: jerryshao <sshao@hortonworks.com>
+Date: Wed, 6 Jan 2016 21:28:29 -0800
+Subject: [PATCH 059/201] [SPARK-12673][UI] Add missing uri prepending for job
+ description
+
+Otherwise the url will be failed to proxy to the right one if in YARN mode. Here is the screenshot:
+
+![screen shot 2016-01-06 at 5 28 26 pm](https://cloud.githubusercontent.com/assets/850797/12139632/bbe78ecc-b49c-11e5-8932-94e8b3622a09.png)
+
+Author: jerryshao <sshao@hortonworks.com>
+
+Closes #10618 from jerryshao/SPARK-12673.
+
+(cherry picked from commit 174e72ceca41a6ac17ad05d50832ee9c561918c0)
+Signed-off-by: Shixiong Zhu <shixiong@databricks.com>
+(cherry picked from commit 94af69c9be70b9d2cd95c26288e2af9599d61e5c)
+---
+ .../org/apache/spark/ui/jobs/AllJobsPage.scala     |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/ui/jobs/AllJobsPage.scala b/core/src/main/scala/org/apache/spark/ui/jobs/AllJobsPage.scala
+index d467dd9..e65ab2c 100644
+--- a/core/src/main/scala/org/apache/spark/ui/jobs/AllJobsPage.scala
++++ b/core/src/main/scala/org/apache/spark/ui/jobs/AllJobsPage.scala
+@@ -224,10 +224,10 @@ private[ui] class AllJobsPage(parent: JobsTab) extends WebUIPage("") {
+       }
+       val formattedDuration = duration.map(d => UIUtils.formatDuration(d)).getOrElse("Unknown")
+       val formattedSubmissionTime = job.submissionTime.map(UIUtils.formatDate).getOrElse("Unknown")
+-      val jobDescription = UIUtils.makeDescription(lastStageDescription, parent.basePath)
++      val basePathUri = UIUtils.prependBaseUri(parent.basePath)
++      val jobDescription = UIUtils.makeDescription(lastStageDescription, basePathUri)
+ 
+-      val detailUrl =
+-        "%s/jobs/job?id=%s".format(UIUtils.prependBaseUri(parent.basePath), job.jobId)
++      val detailUrl = "%s/jobs/job?id=%s".format(basePathUri, job.jobId)
+       <tr id={"job-" + job.jobId}>
+         <td sorttable_customkey={job.jobId.toString}>
+           {job.jobId} {job.jobGroup.map(id => s"($id)").getOrElse("")}
+-- 
+1.7.9.5
+

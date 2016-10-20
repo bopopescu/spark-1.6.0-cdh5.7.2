@@ -1,0 +1,46 @@
+From 3e1e89208c6fe6007ae24e0cd4d45737594fecc6 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Wed, 26 Aug 2015 11:14:32 -0700
+Subject: [PATCH 015/201] CLOUDERA-BUILD. CDH-30545. Allow overriding the mvn
+ command to run.
+
+(cherry picked from commit cf4cec5e562a498d32031bce4126bea189e3d2ee)
+---
+ make-distribution.sh |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/make-distribution.sh b/make-distribution.sh
+index c949e94..6025e3e 100755
+--- a/make-distribution.sh
++++ b/make-distribution.sh
+@@ -40,6 +40,7 @@ TACHYON_URL="http://tachyon-project.org/downloads/files/${TACHYON_VERSION}/${TAC
+ MAKE_TGZ=false
+ NAME=none
+ MVN="$SPARK_HOME/build/mvn"
++MVN_TARGET=package
+ 
+ function exit_with_usage {
+   echo "make-distribution.sh - tool for making binary distributions of Spark"
+@@ -86,6 +87,10 @@ while (( "$#" )); do
+       NAME="$2"
+       shift
+       ;;
++    --target)
++      MVN_TARGET="$2"
++      shift
++      ;;
+     --help)
+       exit_with_usage
+       ;;
+@@ -167,7 +172,7 @@ export MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512M -XX:ReservedCodeCacheSize=512m"
+ # Store the command as an array because $MVN variable might have spaces in it.
+ # Normal quoting tricks don't work.
+ # See: http://mywiki.wooledge.org/BashFAQ/050
+-BUILD_COMMAND=("$MVN" clean package -DskipTests $@)
++BUILD_COMMAND=("$MVN" clean "$MVN_TARGET" -DskipTests $@)
+ 
+ # Actually build the jar
+ echo -e "\nBuilding with..."
+-- 
+1.7.9.5
+

@@ -1,0 +1,283 @@
+From 0ec05d19116021e3505a5492c09a08f9e8a7aba0 Mon Sep 17 00:00:00 2001
+From: "Oscar D. Lara Yejas" <odlaraye@oscars-mbp.usca.ibm.com>
+Date: Fri, 15 Jan 2016 07:37:54 -0800
+Subject: [PATCH 148/201] [SPARK-11031][SPARKR] Method str() on a DataFrame
+
+Author: Oscar D. Lara Yejas <odlaraye@oscars-mbp.usca.ibm.com>
+Author: Oscar D. Lara Yejas <olarayej@mail.usf.edu>
+Author: Oscar D. Lara Yejas <oscar.lara.yejas@us.ibm.com>
+Author: Oscar D. Lara Yejas <odlaraye@oscars-mbp.attlocal.net>
+
+Closes #9613 from olarayej/SPARK-11031.
+
+(cherry picked from commit ba4a641902f95c5a9b3a6bebcaa56039eca2720d)
+Signed-off-by: Shivaram Venkataraman <shivaram@cs.berkeley.edu>
+(cherry picked from commit 5a00528391b9b15dd6db15123578d78077f495d8)
+---
+ R/pkg/NAMESPACE                           |    1 +
+ R/pkg/R/DataFrame.R                       |   73 +++++++++++++++++++++++++++++
+ R/pkg/R/generics.R                        |   36 +++++++-------
+ R/pkg/R/types.R                           |   21 +++++++--
+ R/pkg/inst/tests/testthat/test_sparkSQL.R |   31 ++++++++++++
+ 5 files changed, 140 insertions(+), 22 deletions(-)
+
+diff --git a/R/pkg/NAMESPACE b/R/pkg/NAMESPACE
+index beacc39..33ed2c9 100644
+--- a/R/pkg/NAMESPACE
++++ b/R/pkg/NAMESPACE
+@@ -277,6 +277,7 @@ export("as.DataFrame",
+        "read.parquet",
+        "read.text",
+        "sql",
++       "str",
+        "table",
+        "tableNames",
+        "tables",
+diff --git a/R/pkg/R/DataFrame.R b/R/pkg/R/DataFrame.R
+index 7a7aef2..a6c6a1d 100644
+--- a/R/pkg/R/DataFrame.R
++++ b/R/pkg/R/DataFrame.R
+@@ -2300,3 +2300,76 @@ setMethod("with",
+             newEnv <- assignNewEnv(data)
+             eval(substitute(expr), envir = newEnv, enclos = newEnv)
+           })
++
++#' Display the structure of a DataFrame, including column names, column types, as well as a
++#' a small sample of rows.
++#' @name str
++#' @title Compactly display the structure of a dataset
++#' @rdname str
++#' @family DataFrame functions
++#' @param object a DataFrame
++#' @examples \dontrun{
++#' # Create a DataFrame from the Iris dataset
++#' irisDF <- createDataFrame(sqlContext, iris)
++#' 
++#' # Show the structure of the DataFrame
++#' str(irisDF)
++#' }
++setMethod("str",
++          signature(object = "DataFrame"),
++          function(object) {
++
++            # TODO: These could be made global parameters, though in R it's not the case
++            MAX_CHAR_PER_ROW <- 120
++            MAX_COLS <- 100
++
++            # Get the column names and types of the DataFrame
++            names <- names(object)
++            types <- coltypes(object)
++
++            # Get the first elements of the dataset. Limit number of columns accordingly
++            localDF <- if (ncol(object) > MAX_COLS) {
++              head(object[, c(1:MAX_COLS)])
++            } else {
++              head(object)
++            }
++
++            # The number of observations will not be displayed as computing the
++            # number of rows is a very expensive operation
++            cat(paste0("'", class(object), "': ", length(names), " variables:\n"))
++
++            if (nrow(localDF) > 0) {
++              for (i in 1 : ncol(localDF)) {
++                # Get the first elements for each column
++
++                firstElements <- if (types[i] == "character") {
++                  paste(paste0("\"", localDF[,i], "\""), collapse = " ")
++                } else {
++                  paste(localDF[,i], collapse = " ")
++                }
++
++                # Add the corresponding number of spaces for alignment
++                spaces <- paste(rep(" ", max(nchar(names) - nchar(names[i]))), collapse="")
++
++                # Get the short type. For 'character', it would be 'chr';
++                # 'for numeric', it's 'num', etc.
++                dataType <- SHORT_TYPES[[types[i]]]
++                if (is.null(dataType)) {
++                  dataType <- substring(types[i], 1, 3)
++                }
++
++                # Concatenate the colnames, coltypes, and first
++                # elements of each column
++                line <- paste0(" $ ", names[i], spaces, ": ",
++                               dataType, " ",firstElements)
++
++                # Chop off extra characters if this is too long
++                cat(substr(line, 1, MAX_CHAR_PER_ROW))
++                cat("\n")
++              }
++
++              if (ncol(localDF) < ncol(object)) {
++                cat(paste0("\nDisplaying first ", ncol(localDF), " columns only."))
++              }
++            }
++          })
+\ No newline at end of file
+diff --git a/R/pkg/R/generics.R b/R/pkg/R/generics.R
+index ba68617..816bbd0 100644
+--- a/R/pkg/R/generics.R
++++ b/R/pkg/R/generics.R
+@@ -378,7 +378,6 @@ setGeneric("subtractByKey",
+ setGeneric("value", function(bcast) { standardGeneric("value") })
+ 
+ 
+-
+ ####################  DataFrame Methods ########################
+ 
+ #' @rdname agg
+@@ -389,6 +388,14 @@ setGeneric("agg", function (x, ...) { standardGeneric("agg") })
+ #' @export
+ setGeneric("arrange", function(x, col, ...) { standardGeneric("arrange") })
+ 
++#' @rdname as.data.frame
++#' @export
++setGeneric("as.data.frame")
++
++#' @rdname attach
++#' @export
++setGeneric("attach")
++
+ #' @rdname columns
+ #' @export
+ setGeneric("colnames", function(x, do.NULL = TRUE, prefix = "col") { standardGeneric("colnames") })
+@@ -525,13 +532,12 @@ setGeneric("saveAsTable", function(df, tableName, source, mode, ...) {
+   standardGeneric("saveAsTable")
+ })
+ 
+-#' @rdname withColumn
+ #' @export
+-setGeneric("transform", function(`_data`, ...) {standardGeneric("transform") })
++setGeneric("str")
+ 
+-#' @rdname write.df
++#' @rdname mutate
+ #' @export
+-setGeneric("write.df", function(df, path, ...) { standardGeneric("write.df") })
++setGeneric("transform", function(`_data`, ...) {standardGeneric("transform") })
+ 
+ #' @rdname write.df
+ #' @export
+@@ -593,6 +599,10 @@ setGeneric("unionAll", function(x, y) { standardGeneric("unionAll") })
+ #' @export
+ setGeneric("where", function(x, condition) { standardGeneric("where") })
+ 
++#' @rdname with
++#' @export
++setGeneric("with")
++
+ #' @rdname withColumn
+ #' @export
+ setGeneric("withColumn", function(x, colName, col) { standardGeneric("withColumn") })
+@@ -602,6 +612,9 @@ setGeneric("withColumn", function(x, colName, col) { standardGeneric("withColumn
+ setGeneric("withColumnRenamed",
+            function(x, existingCol, newCol) { standardGeneric("withColumnRenamed") })
+ 
++#' @rdname write.df
++#' @export
++setGeneric("write.df", function(df, path, ...) { standardGeneric("write.df") })
+ 
+ ###################### Column Methods ##########################
+ 
+@@ -1105,7 +1118,6 @@ setGeneric("weekofyear", function(x) { standardGeneric("weekofyear") })
+ #' @export
+ setGeneric("year", function(x) { standardGeneric("year") })
+ 
+-
+ #' @rdname glm
+ #' @export
+ setGeneric("glm")
+@@ -1117,15 +1129,3 @@ setGeneric("predict", function(object, ...) { standardGeneric("predict") })
+ #' @rdname rbind
+ #' @export
+ setGeneric("rbind", signature = "...")
+-
+-#' @rdname as.data.frame
+-#' @export
+-setGeneric("as.data.frame")
+-
+-#' @rdname attach
+-#' @export
+-setGeneric("attach")
+-
+-#' @rdname with
+-#' @export
+-setGeneric("with")
+diff --git a/R/pkg/R/types.R b/R/pkg/R/types.R
+index 1f06af7..ad048b1 100644
+--- a/R/pkg/R/types.R
++++ b/R/pkg/R/types.R
+@@ -47,10 +47,23 @@ COMPLEX_TYPES <- list(
+ # The full list of data types.
+ DATA_TYPES <- as.environment(c(as.list(PRIMITIVE_TYPES), COMPLEX_TYPES))
+ 
++SHORT_TYPES <- as.environment(list(
++  "character" = "chr",
++  "logical" = "logi",
++  "POSIXct" = "POSIXct",
++  "integer" = "int",
++  "numeric" = "num",
++  "raw" = "raw",
++  "Date" = "Date",
++  "map" = "map",
++  "array" = "array",
++  "struct" = "struct"
++))
++
+ # An environment for mapping R to Scala, names are R types and values are Scala types.
+ rToSQLTypes <- as.environment(list(
+-  "integer"   = "integer", # in R, integer is 32bit
+-  "numeric"   = "double",  # in R, numeric == double which is 64bit
+-  "double"    = "double",
++  "integer" = "integer", # in R, integer is 32bit
++  "numeric" = "double",  # in R, numeric == double which is 64bit
++  "double" = "double",
+   "character" = "string",
+-  "logical"   = "boolean"))
++  "logical" = "boolean"))
+diff --git a/R/pkg/inst/tests/testthat/test_sparkSQL.R b/R/pkg/inst/tests/testthat/test_sparkSQL.R
+index 73f311e..d6e498d 100644
+--- a/R/pkg/inst/tests/testthat/test_sparkSQL.R
++++ b/R/pkg/inst/tests/testthat/test_sparkSQL.R
+@@ -1795,6 +1795,37 @@ test_that("Method coltypes() to get and set R's data types of a DataFrame", {
+                "Only atomic type is supported for column types")
+ })
+ 
++test_that("Method str()", {
++  # Structure of Iris
++  iris2 <- iris
++  colnames(iris2) <- c("Sepal_Length", "Sepal_Width", "Petal_Length", "Petal_Width", "Species")
++  iris2$col <- TRUE
++  irisDF2 <- createDataFrame(sqlContext, iris2)
++
++  out <- capture.output(str(irisDF2))
++  expect_equal(length(out), 7)
++  expect_equal(out[1], "'DataFrame': 6 variables:")
++  expect_equal(out[2], " $ Sepal_Length: num 5.1 4.9 4.7 4.6 5 5.4")
++  expect_equal(out[3], " $ Sepal_Width : num 3.5 3 3.2 3.1 3.6 3.9")
++  expect_equal(out[4], " $ Petal_Length: num 1.4 1.4 1.3 1.5 1.4 1.7")
++  expect_equal(out[5], " $ Petal_Width : num 0.2 0.2 0.2 0.2 0.2 0.4")
++  expect_equal(out[6], paste0(" $ Species     : chr \"setosa\" \"setosa\" \"",
++                              "setosa\" \"setosa\" \"setosa\" \"setosa\""))
++  expect_equal(out[7], " $ col         : logi TRUE TRUE TRUE TRUE TRUE TRUE")
++
++  # A random dataset with many columns. This test is to check str limits
++  # the number of columns. Therefore, it will suffice to check for the
++  # number of returned rows
++  x <- runif(200, 1, 10)
++  df <- data.frame(t(as.matrix(data.frame(x,x,x,x,x,x,x,x,x))))
++  DF <- createDataFrame(sqlContext, df)
++  out <- capture.output(str(DF))
++  expect_equal(length(out), 103)
++
++  # Test utils:::str
++  expect_equal(capture.output(utils:::str(iris)), capture.output(str(iris)))
++})
++
+ unlink(parquetPath)
+ unlink(jsonPath)
+ unlink(jsonPathNa)
+-- 
+1.7.9.5
+

@@ -1,0 +1,35 @@
+From 23e9876c3ca57a1570f00feb1ddd92caa30f742e Mon Sep 17 00:00:00 2001
+From: Alex Bozarth <ajbozart@us.ibm.com>
+Date: Sat, 23 Jan 2016 20:19:58 +0900
+Subject: [PATCH 087/201] [SPARK-12859][STREAMING][WEB UI] Names of input
+ streams with receivers don't fit in Streaming page
+
+Added CSS style to force names of input streams with receivers to wrap
+
+Author: Alex Bozarth <ajbozart@us.ibm.com>
+
+Closes #10873 from ajbozarth/spark12859.
+
+(cherry picked from commit 358a33bbff549826b2336c317afc7274bdd30fdb)
+Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+(cherry picked from commit dca238af7ef39e0d1951b72819f12092eae1964a)
+---
+ .../apache/spark/streaming/ui/StreamingPage.scala  |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/streaming/src/main/scala/org/apache/spark/streaming/ui/StreamingPage.scala b/streaming/src/main/scala/org/apache/spark/streaming/ui/StreamingPage.scala
+index 4588b21..23950d4 100644
+--- a/streaming/src/main/scala/org/apache/spark/streaming/ui/StreamingPage.scala
++++ b/streaming/src/main/scala/org/apache/spark/streaming/ui/StreamingPage.scala
+@@ -459,7 +459,7 @@ private[ui] class StreamingPage(parent: StreamingTab)
+     <tr>
+       <td rowspan="2" style="vertical-align: middle; width: 151px;">
+         <div style="width: 151px;">
+-          <div><strong>{receiverName}</strong></div>
++          <div style="word-wrap: break-word;"><strong>{receiverName}</strong></div>
+           <div>Avg: {receivedRecords.formattedAvg} events/sec</div>
+         </div>
+       </td>
+-- 
+1.7.9.5
+

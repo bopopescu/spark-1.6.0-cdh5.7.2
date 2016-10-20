@@ -1,0 +1,36 @@
+From 36f5a5d1a2f068c9dfbdd06de4ac379d1d42befe Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Fri, 29 Apr 2016 23:13:50 -0700
+Subject: [PATCH 197/201] [SPARK-14391][LAUNCHER] Fix launcher communication
+ test, take 2.
+
+There's actually a race here: the state of the handler was changed before
+the connection was set, so the test code could be notified of the state
+change, wake up, and still see the connection as null, triggering the assert.
+
+Author: Marcelo Vanzin <vanzin@cloudera.com>
+
+Closes #12785 from vanzin/SPARK-14391.
+
+(cherry picked from commit 73c20bf32524c2232febc8c4b12d5fa228347163)
+---
+ .../org/apache/spark/launcher/LauncherServer.java  |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/launcher/src/main/java/org/apache/spark/launcher/LauncherServer.java b/launcher/src/main/java/org/apache/spark/launcher/LauncherServer.java
+index 414ffc2..e493514 100644
+--- a/launcher/src/main/java/org/apache/spark/launcher/LauncherServer.java
++++ b/launcher/src/main/java/org/apache/spark/launcher/LauncherServer.java
+@@ -298,8 +298,8 @@ class LauncherServer implements Closeable {
+           Hello hello = (Hello) msg;
+           ChildProcAppHandle handle = pending.remove(hello.secret);
+           if (handle != null) {
+-            handle.setState(SparkAppHandle.State.CONNECTED);
+             handle.setConnection(this);
++            handle.setState(SparkAppHandle.State.CONNECTED);
+             this.handle = handle;
+           } else {
+             throw new IllegalArgumentException("Received Hello for unknown client.");
+-- 
+1.7.9.5
+

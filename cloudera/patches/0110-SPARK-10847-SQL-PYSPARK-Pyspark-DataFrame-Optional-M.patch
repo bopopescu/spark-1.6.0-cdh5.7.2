@@ -1,0 +1,67 @@
+From d6113a967f5b6898958b4ec7b857919381d04fb4 Mon Sep 17 00:00:00 2001
+From: Jason Lee <cjlee@us.ibm.com>
+Date: Wed, 27 Jan 2016 09:55:10 -0800
+Subject: [PATCH 110/201] [SPARK-10847][SQL][PYSPARK] Pyspark - DataFrame -
+ Optional Metadata with `None` triggers cryptic
+ failure
+
+The error message is now changed from "Do not support type class scala.Tuple2." to "Do not support type class org.json4s.JsonAST$JNull$" to be more informative about what is not supported. Also, StructType metadata now handles JNull correctly, i.e., {'a': None}. test_metadata_null is added to tests.py to show the fix works.
+
+Author: Jason Lee <cjlee@us.ibm.com>
+
+Closes #8969 from jasoncl/SPARK-10847.
+
+(cherry picked from commit edd473751b59b55fa3daede5ed7bc19ea8bd7170)
+Signed-off-by: Yin Huai <yhuai@databricks.com>
+(cherry picked from commit 96e32db5cbd1ef32f65206357bfb8d9f70a06d0a)
+---
+ python/pyspark/sql/tests.py                        |    7 +++++++
+ .../org/apache/spark/sql/types/Metadata.scala      |    7 ++++++-
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/python/pyspark/sql/tests.py b/python/pyspark/sql/tests.py
+index 95affcf..ee64f8e 100644
+--- a/python/pyspark/sql/tests.py
++++ b/python/pyspark/sql/tests.py
+@@ -747,6 +747,13 @@ class SQLTests(ReusedPySparkTestCase):
+         except ValueError:
+             self.assertEqual(1, 1)
+ 
++    def test_metadata_null(self):
++        from pyspark.sql.types import StructType, StringType, StructField
++        schema = StructType([StructField("f1", StringType(), True, None),
++                             StructField("f2", StringType(), True, {'a': None})])
++        rdd = self.sc.parallelize([["a", "b"], ["c", "d"]])
++        self.sqlCtx.createDataFrame(rdd, schema)
++
+     def test_save_and_load(self):
+         df = self.df
+         tmpPath = tempfile.mkdtemp()
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/types/Metadata.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/types/Metadata.scala
+index 6ee24ee..9e0f994 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/types/Metadata.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/types/Metadata.scala
+@@ -156,7 +156,9 @@ object Metadata {
+               throw new RuntimeException(s"Do not support array of type ${other.getClass}.")
+           }
+         }
+-      case other =>
++      case (key, JNull) =>
++        builder.putNull(key)
++      case (key, other) =>
+         throw new RuntimeException(s"Do not support type ${other.getClass}.")
+     }
+     builder.build()
+@@ -229,6 +231,9 @@ class MetadataBuilder {
+     this
+   }
+ 
++  /** Puts a null. */
++  def putNull(key: String): this.type = put(key, null)
++
+   /** Puts a Long. */
+   def putLong(key: String, value: Long): this.type = put(key, value)
+ 
+-- 
+1.7.9.5
+

@@ -1,0 +1,33 @@
+From cf1ae7247bd70d19ddf278e0f70d9941082900b1 Mon Sep 17 00:00:00 2001
+From: Gabriele Nizzoli <mail@nizzoli.net>
+Date: Tue, 2 Feb 2016 10:57:18 -0800
+Subject: [PATCH 119/201] [SPARK-13121][STREAMING] java mapWithState
+ mishandles scala Option
+
+java mapwithstate with Function3 has wrong conversion of java `Optional` to scala `Option`, fixed code uses same conversion used in the mapwithstate call that uses Function4 as an input. `Optional.fromNullable(v.get)` fails if v is `None`, better to use `JavaUtils.optionToOptional(v)` instead.
+
+Author: Gabriele Nizzoli <mail@nizzoli.net>
+
+Closes #11007 from gabrielenizzoli/branch-1.6.
+
+(cherry picked from commit 4c28b4c8f342fde937ff77ab30f898dfe3186c03)
+---
+ .../org/apache/spark/streaming/StateSpec.scala     |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/streaming/src/main/scala/org/apache/spark/streaming/StateSpec.scala b/streaming/src/main/scala/org/apache/spark/streaming/StateSpec.scala
+index 9f6f952..017d451 100644
+--- a/streaming/src/main/scala/org/apache/spark/streaming/StateSpec.scala
++++ b/streaming/src/main/scala/org/apache/spark/streaming/StateSpec.scala
+@@ -219,7 +219,7 @@ object StateSpec {
+       mappingFunction: JFunction3[KeyType, Optional[ValueType], State[StateType], MappedType]):
+     StateSpec[KeyType, ValueType, StateType, MappedType] = {
+     val wrappedFunc = (k: KeyType, v: Option[ValueType], s: State[StateType]) => {
+-      mappingFunction.call(k, Optional.fromNullable(v.get), s)
++      mappingFunction.call(k, JavaUtils.optionToOptional(v), s)
+     }
+     StateSpec.function(wrappedFunc)
+   }
+-- 
+1.7.9.5
+

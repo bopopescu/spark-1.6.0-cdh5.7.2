@@ -1,0 +1,48 @@
+From e90758156d518a5a932fa39e3a4c73ec4007a272 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Wed, 30 Mar 2016 15:13:47 -0700
+Subject: [PATCH 183/201] CLOUDERA-BUILD. Increase some test timeouts.
+
+(cherry picked from commit a899194ff2dfa29cd3aa0c76cf49db9ee3a1ade2)
+---
+ .../apache/spark/launcher/LauncherServerSuite.java |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/launcher/src/test/java/org/apache/spark/launcher/LauncherServerSuite.java b/launcher/src/test/java/org/apache/spark/launcher/LauncherServerSuite.java
+index dc8fbb5..40481b9 100644
+--- a/launcher/src/test/java/org/apache/spark/launcher/LauncherServerSuite.java
++++ b/launcher/src/test/java/org/apache/spark/launcher/LauncherServerSuite.java
+@@ -91,7 +91,7 @@ public class LauncherServerSuite extends BaseSuite {
+       client = new TestClient(s);
+       synchronized (waitLock) {
+         client.send(new Hello(handle.getSecret(), "1.4.0"));
+-        waitLock.wait(TimeUnit.SECONDS.toMillis(10));
++        waitLock.wait(TimeUnit.SECONDS.toMillis(30));
+       }
+ 
+       // Make sure the server matched the client to the handle.
+@@ -99,18 +99,18 @@ public class LauncherServerSuite extends BaseSuite {
+ 
+       synchronized (waitLock) {
+         client.send(new SetAppId("app-id"));
+-        waitLock.wait(TimeUnit.SECONDS.toMillis(10));
++        waitLock.wait(TimeUnit.SECONDS.toMillis(30));
+       }
+       assertEquals("app-id", handle.getAppId());
+ 
+       synchronized (waitLock) {
+         client.send(new SetState(SparkAppHandle.State.RUNNING));
+-        waitLock.wait(TimeUnit.SECONDS.toMillis(10));
++        waitLock.wait(TimeUnit.SECONDS.toMillis(30));
+       }
+       assertEquals(SparkAppHandle.State.RUNNING, handle.getState());
+ 
+       handle.stop();
+-      Message stopMsg = client.inbound.poll(10, TimeUnit.SECONDS);
++      Message stopMsg = client.inbound.poll(30, TimeUnit.SECONDS);
+       assertTrue(stopMsg instanceof Stop);
+     } finally {
+       kill(handle);
+-- 
+1.7.9.5
+

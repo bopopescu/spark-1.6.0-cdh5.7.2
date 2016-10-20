@@ -1,0 +1,191 @@
+From e1abd2867f6d0a2f6eae3d56e2ea656f1abac2ff Mon Sep 17 00:00:00 2001
+From: Koyo Yoshida <yoshidakuy@oss.nttdata.co.jp>
+Date: Fri, 15 Jan 2016 13:32:47 +0900
+Subject: [PATCH 081/201] [SPARK-12708][UI] Sorting task error in Stages Page
+ when yarn mode.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+If sort column contains slash(e.g. "Executor ID / Host") when yarn mode,sort fail with following message.
+
+![spark-12708](https://cloud.githubusercontent.com/assets/6679275/12193320/80814f8c-b62a-11e5-9914-7bf3907029df.png)
+
+Ｉt's similar to SPARK-4313 .
+
+Author: root <root@R520T1.(none)>
+Author: Koyo Yoshida <koyo0615@gmail.com>
+
+Closes #10663 from yoshidakuy/SPARK-12708.
+
+(cherry picked from commit 32cca933546b4aaf0fc040b9cfd1a5968171b423)
+Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+(cherry picked from commit d23e57d02977f83c099ef24dda52c7673dcc9ad7)
+---
+ .../main/scala/org/apache/spark/ui/UIUtils.scala   |   16 ++++++++++++++++
+ .../spark/ui/exec/ExecutorThreadDumpPage.scala     |   15 ++-------------
+ .../scala/org/apache/spark/ui/jobs/PoolPage.scala  |   11 ++++++++---
+ .../scala/org/apache/spark/ui/jobs/PoolTable.scala |    4 +++-
+ .../scala/org/apache/spark/ui/jobs/StagePage.scala |    4 +++-
+ .../scala/org/apache/spark/ui/UIUtilsSuite.scala   |   14 ++++++++++++++
+ 6 files changed, 46 insertions(+), 18 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/ui/UIUtils.scala b/core/src/main/scala/org/apache/spark/ui/UIUtils.scala
+index 81a6f07..1949c4b 100644
+--- a/core/src/main/scala/org/apache/spark/ui/UIUtils.scala
++++ b/core/src/main/scala/org/apache/spark/ui/UIUtils.scala
+@@ -17,6 +17,7 @@
+ 
+ package org.apache.spark.ui
+ 
++import java.net.URLDecoder
+ import java.text.SimpleDateFormat
+ import java.util.{Date, Locale}
+ 
+@@ -451,4 +452,19 @@ private[spark] object UIUtils extends Logging {
+         <span class="description-input">{desc}</span>
+     }
+   }
++
++  /**
++   * Decode URLParameter if URL is encoded by YARN-WebAppProxyServlet.
++   * Due to YARN-2844: WebAppProxyServlet cannot handle urls which contain encoded characters
++   * Therefore we need to decode it until we get the real URLParameter.
++   */
++  def decodeURLParameter(urlParam: String): String = {
++    var param = urlParam
++    var decodedParam = URLDecoder.decode(param, "UTF-8")
++    while (param != decodedParam) {
++      param = decodedParam
++      decodedParam = URLDecoder.decode(param, "UTF-8")
++    }
++    param
++  }
+ }
+diff --git a/core/src/main/scala/org/apache/spark/ui/exec/ExecutorThreadDumpPage.scala b/core/src/main/scala/org/apache/spark/ui/exec/ExecutorThreadDumpPage.scala
+index b0a2cb4..3298054 100644
+--- a/core/src/main/scala/org/apache/spark/ui/exec/ExecutorThreadDumpPage.scala
++++ b/core/src/main/scala/org/apache/spark/ui/exec/ExecutorThreadDumpPage.scala
+@@ -17,7 +17,6 @@
+ 
+ package org.apache.spark.ui.exec
+ 
+-import java.net.URLDecoder
+ import javax.servlet.http.HttpServletRequest
+ 
+ import scala.util.Try
+@@ -30,18 +29,8 @@ private[ui] class ExecutorThreadDumpPage(parent: ExecutorsTab) extends WebUIPage
+   private val sc = parent.sc
+ 
+   def render(request: HttpServletRequest): Seq[Node] = {
+-    val executorId = Option(request.getParameter("executorId")).map {
+-      executorId =>
+-        // Due to YARN-2844, "<driver>" in the url will be encoded to "%25253Cdriver%25253E" when
+-        // running in yarn-cluster mode. `request.getParameter("executorId")` will return
+-        // "%253Cdriver%253E". Therefore we need to decode it until we get the real id.
+-        var id = executorId
+-        var decodedId = URLDecoder.decode(id, "UTF-8")
+-        while (id != decodedId) {
+-          id = decodedId
+-          decodedId = URLDecoder.decode(id, "UTF-8")
+-        }
+-        id
++    val executorId = Option(request.getParameter("executorId")).map { executorId =>
++      UIUtils.decodeURLParameter(executorId)
+     }.getOrElse {
+       throw new IllegalArgumentException(s"Missing executorId parameter")
+     }
+diff --git a/core/src/main/scala/org/apache/spark/ui/jobs/PoolPage.scala b/core/src/main/scala/org/apache/spark/ui/jobs/PoolPage.scala
+index f3e0b38..778272a 100644
+--- a/core/src/main/scala/org/apache/spark/ui/jobs/PoolPage.scala
++++ b/core/src/main/scala/org/apache/spark/ui/jobs/PoolPage.scala
+@@ -31,8 +31,11 @@ private[ui] class PoolPage(parent: StagesTab) extends WebUIPage("pool") {
+ 
+   def render(request: HttpServletRequest): Seq[Node] = {
+     listener.synchronized {
+-      val poolName = request.getParameter("poolname")
+-      require(poolName != null && poolName.nonEmpty, "Missing poolname parameter")
++      val poolName = Option(request.getParameter("poolname")).map { poolname =>
++        UIUtils.decodeURLParameter(poolname)
++      }.getOrElse {
++        throw new IllegalArgumentException(s"Missing poolname parameter")
++      }
+ 
+       val poolToActiveStages = listener.poolToActiveStages
+       val activeStages = poolToActiveStages.get(poolName) match {
+@@ -44,7 +47,9 @@ private[ui] class PoolPage(parent: StagesTab) extends WebUIPage("pool") {
+         killEnabled = parent.killEnabled)
+ 
+       // For now, pool information is only accessible in live UIs
+-      val pools = sc.map(_.getPoolForName(poolName).get).toSeq
++      val pools = sc.map(_.getPoolForName(poolName).getOrElse {
++        throw new IllegalArgumentException(s"Unknown poolname: $poolName")
++      }).toSeq
+       val poolTable = new PoolTable(pools, parent)
+ 
+       val content =
+diff --git a/core/src/main/scala/org/apache/spark/ui/jobs/PoolTable.scala b/core/src/main/scala/org/apache/spark/ui/jobs/PoolTable.scala
+index 9ba2af5..ea02968 100644
+--- a/core/src/main/scala/org/apache/spark/ui/jobs/PoolTable.scala
++++ b/core/src/main/scala/org/apache/spark/ui/jobs/PoolTable.scala
+@@ -17,6 +17,8 @@
+ 
+ package org.apache.spark.ui.jobs
+ 
++import java.net.URLEncoder
++
+ import scala.collection.mutable.HashMap
+ import scala.xml.Node
+ 
+@@ -59,7 +61,7 @@ private[ui] class PoolTable(pools: Seq[Schedulable], parent: StagesTab) {
+       case None => 0
+     }
+     val href = "%s/stages/pool?poolname=%s"
+-      .format(UIUtils.prependBaseUri(parent.basePath), p.name)
++      .format(UIUtils.prependBaseUri(parent.basePath), URLEncoder.encode(p.name, "UTF-8"))
+     <tr>
+       <td>
+         <a href={href}>{p.name}</a>
+diff --git a/core/src/main/scala/org/apache/spark/ui/jobs/StagePage.scala b/core/src/main/scala/org/apache/spark/ui/jobs/StagePage.scala
+index 1b34ba9..5183c80 100644
+--- a/core/src/main/scala/org/apache/spark/ui/jobs/StagePage.scala
++++ b/core/src/main/scala/org/apache/spark/ui/jobs/StagePage.scala
+@@ -99,7 +99,9 @@ private[ui] class StagePage(parent: StagesTab) extends WebUIPage("stage") {
+       val parameterTaskPageSize = request.getParameter("task.pageSize")
+ 
+       val taskPage = Option(parameterTaskPage).map(_.toInt).getOrElse(1)
+-      val taskSortColumn = Option(parameterTaskSortColumn).getOrElse("Index")
++      val taskSortColumn = Option(parameterTaskSortColumn).map { sortColumn =>
++        UIUtils.decodeURLParameter(sortColumn)
++      }.getOrElse("Index")
+       val taskSortDesc = Option(parameterTaskSortDesc).map(_.toBoolean).getOrElse(false)
+       val taskPageSize = Option(parameterTaskPageSize).map(_.toInt).getOrElse(100)
+ 
+diff --git a/core/src/test/scala/org/apache/spark/ui/UIUtilsSuite.scala b/core/src/test/scala/org/apache/spark/ui/UIUtilsSuite.scala
+index dd8d5ec..bc8a5d4 100644
+--- a/core/src/test/scala/org/apache/spark/ui/UIUtilsSuite.scala
++++ b/core/src/test/scala/org/apache/spark/ui/UIUtilsSuite.scala
+@@ -67,6 +67,20 @@ class UIUtilsSuite extends SparkFunSuite {
+       s"\nRunning progress bar should round down\n\nExpected:\n$expected\nGenerated:\n$generated")
+   }
+ 
++  test("decodeURLParameter (SPARK-12708: Sorting task error in Stages Page when yarn mode.)") {
++    val encoded1 = "%252F"
++    val decoded1 = "/"
++    val encoded2 = "%253Cdriver%253E"
++    val decoded2 = "<driver>"
++
++    assert(decoded1 === decodeURLParameter(encoded1))
++    assert(decoded2 === decodeURLParameter(encoded2))
++
++    // verify that no affect to decoded URL.
++    assert(decoded1 === decodeURLParameter(decoded1))
++    assert(decoded2 === decodeURLParameter(decoded2))
++  }
++
+   private def verify(
+       desc: String, expected: Elem, errorMsg: String = "", baseUrl: String = ""): Unit = {
+     val generated = makeDescription(desc, baseUrl)
+-- 
+1.7.9.5
+

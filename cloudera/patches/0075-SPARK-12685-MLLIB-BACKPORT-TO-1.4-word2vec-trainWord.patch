@@ -1,0 +1,77 @@
+From 166d94fa6623388b0936b422299bb9bfe0e101b4 Mon Sep 17 00:00:00 2001
+From: Yuhao Yang <hhbyyh@gmail.com>
+Date: Wed, 13 Jan 2016 11:53:25 -0800
+Subject: [PATCH 075/201] [SPARK-12685][MLLIB][BACKPORT TO 1.4] word2vec
+ trainWordsCount gets overflow
+
+jira: https://issues.apache.org/jira/browse/SPARK-12685
+
+master PR: https://github.com/apache/spark/pull/10627
+
+the log of word2vec reports
+trainWordsCount = -785727483
+during computation over a large dataset.
+
+Update the priority as it will affect the computation process.
+alpha = learningRate * (1 - numPartitions * wordCount.toDouble / (trainWordsCount + 1))
+
+Author: Yuhao Yang <hhbyyh@gmail.com>
+
+Closes #10721 from hhbyyh/branch-1.4.
+
+(cherry picked from commit 7bd2564192f51f6229cf759a2bafc22134479955)
+Signed-off-by: Joseph K. Bradley <joseph@databricks.com>
+(cherry picked from commit 364f799cf6e23d084d7e9adb8c33f923f4130aa9)
+---
+ .../org/apache/spark/mllib/feature/Word2Vec.scala  |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/mllib/src/main/scala/org/apache/spark/mllib/feature/Word2Vec.scala b/mllib/src/main/scala/org/apache/spark/mllib/feature/Word2Vec.scala
+index 1dbedaa..30a1849 100644
+--- a/mllib/src/main/scala/org/apache/spark/mllib/feature/Word2Vec.scala
++++ b/mllib/src/main/scala/org/apache/spark/mllib/feature/Word2Vec.scala
+@@ -152,7 +152,7 @@ class Word2Vec extends Serializable with Logging {
+   /** context words from [-window, window] */
+   private var window = 5
+ 
+-  private var trainWordsCount = 0
++  private var trainWordsCount = 0L
+   private var vocabSize = 0
+   @transient private var vocab: Array[VocabWord] = null
+   @transient private var vocabHash = mutable.HashMap.empty[String, Int]
+@@ -160,13 +160,13 @@ class Word2Vec extends Serializable with Logging {
+   private def learnVocab(words: RDD[String]): Unit = {
+     vocab = words.map(w => (w, 1))
+       .reduceByKey(_ + _)
++      .filter(_._2 >= minCount)
+       .map(x => VocabWord(
+         x._1,
+         x._2,
+         new Array[Int](MAX_CODE_LENGTH),
+         new Array[Int](MAX_CODE_LENGTH),
+         0))
+-      .filter(_.cn >= minCount)
+       .collect()
+       .sortWith((a, b) => a.cn > b.cn)
+ 
+@@ -180,7 +180,7 @@ class Word2Vec extends Serializable with Logging {
+       trainWordsCount += vocab(a).cn
+       a += 1
+     }
+-    logInfo("trainWordsCount = " + trainWordsCount)
++    logInfo(s"vocabSize = $vocabSize, trainWordsCount = $trainWordsCount")
+   }
+ 
+   private def createExpTable(): Array[Float] = {
+@@ -330,7 +330,7 @@ class Word2Vec extends Serializable with Logging {
+         val random = new XORShiftRandom(seed ^ ((idx + 1) << 16) ^ ((-k - 1) << 8))
+         val syn0Modify = new Array[Int](vocabSize)
+         val syn1Modify = new Array[Int](vocabSize)
+-        val model = iter.foldLeft((syn0Global, syn1Global, 0, 0)) {
++        val model = iter.foldLeft((syn0Global, syn1Global, 0L, 0L)) {
+           case ((syn0, syn1, lastWordCount, wordCount), sentence) =>
+             var lwc = lastWordCount
+             var wc = wordCount
+-- 
+1.7.9.5
+

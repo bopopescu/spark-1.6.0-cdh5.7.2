@@ -1,0 +1,244 @@
+From 23a35bdbddcfff479a47310ffd9b9831f8340dd7 Mon Sep 17 00:00:00 2001
+From: CodingCat <zhunansjtu@gmail.com>
+Date: Tue, 15 Dec 2015 18:21:00 -0800
+Subject: [PATCH 097/201] [SPARK-9516][UI] Improvement of Thread Dump Page
+
+https://issues.apache.org/jira/browse/SPARK-9516
+
+- [x] new look of Thread Dump Page
+
+- [x] click column title to sort
+
+- [x] grep
+
+- [x] search as you type
+
+squito JoshRosen It's ready for the review now
+
+Author: CodingCat <zhunansjtu@gmail.com>
+
+Closes #7910 from CodingCat/SPARK-9516.
+
+(cherry picked from commit a63d9edcfb8a714a17492517927aa114dea8fea0)
+---
+ .../org/apache/spark/ui/static/sorttable.js        |    6 +-
+ .../resources/org/apache/spark/ui/static/table.js  |   72 +++++++++++++++++++
+ .../resources/org/apache/spark/ui/static/webui.css |   10 ++-
+ .../spark/ui/exec/ExecutorThreadDumpPage.scala     |   73 +++++++++++---------
+ 4 files changed, 118 insertions(+), 43 deletions(-)
+
+diff --git a/core/src/main/resources/org/apache/spark/ui/static/sorttable.js b/core/src/main/resources/org/apache/spark/ui/static/sorttable.js
+index a73d9a5..ff24147 100644
+--- a/core/src/main/resources/org/apache/spark/ui/static/sorttable.js
++++ b/core/src/main/resources/org/apache/spark/ui/static/sorttable.js
+@@ -169,7 +169,7 @@ sorttable = {
+     for (var i=0; i<table.tBodies[0].rows.length; i++) {
+       text = sorttable.getInnerText(table.tBodies[0].rows[i].cells[column]);
+       if (text != '') {
+-        if (text.match(/^-?[£$¤]?[\d,.]+%?$/)) {
++        if (text.match(/^-?[Â£$Â¤]?[\d,.]+%?$/)) {
+           return sorttable.sort_numeric;
+         }
+         // check for a date: dd/mm/yyyy or dd/mm/yy 
+@@ -266,8 +266,8 @@ sorttable = {
+     return aa-bb;
+   },
+   sort_alpha: function(a,b) {
+-    if (a[0]==b[0]) return 0;
+-    if (a[0]<b[0]) return -1;
++    if (a[0].toLowerCase()==b[0].toLowerCase()) return 0;
++    if (a[0].toLowerCase()<b[0].toLowerCase()) return -1;
+     return 1;
+   },
+   sort_ddmm: function(a,b) {
+diff --git a/core/src/main/resources/org/apache/spark/ui/static/table.js b/core/src/main/resources/org/apache/spark/ui/static/table.js
+index 656147e..14b06bf 100644
+--- a/core/src/main/resources/org/apache/spark/ui/static/table.js
++++ b/core/src/main/resources/org/apache/spark/ui/static/table.js
+@@ -30,3 +30,75 @@ function stripeSummaryTable() {
+        }
+     });
+ }
++
++function toggleThreadStackTrace(threadId, forceAdd) {
++    var stackTrace = $("#" + threadId + "_stacktrace")
++    if (stackTrace.length == 0) {
++        var stackTraceText = $('#' + threadId + "_td_stacktrace").html()
++        var threadCell = $("#thread_" + threadId + "_tr")
++        threadCell.after("<tr id=\"" + threadId +"_stacktrace\" class=\"accordion-body\"><td colspan=\"3\"><pre>" +
++            stackTraceText +  "</pre></td></tr>")
++    } else {
++        if (!forceAdd) {
++            stackTrace.remove()
++        }
++    }
++}
++
++function expandAllThreadStackTrace(toggleButton) {
++    $('.accordion-heading').each(function() {
++        //get thread ID
++        if (!$(this).hasClass("hidden")) {
++            var trId = $(this).attr('id').match(/thread_([0-9]+)_tr/m)[1]
++            toggleThreadStackTrace(trId, true)
++        }
++    })
++    if (toggleButton) {
++        $('.expandbutton').toggleClass('hidden')
++    }
++}
++
++function collapseAllThreadStackTrace(toggleButton) {
++    $('.accordion-body').each(function() {
++        $(this).remove()
++    })
++    if (toggleButton) {
++        $('.expandbutton').toggleClass('hidden');
++    }
++}
++
++
++// inOrOut - true: over, false: out
++function onMouseOverAndOut(threadId) {
++    $("#" + threadId + "_td_id").toggleClass("threaddump-td-mouseover");
++    $("#" + threadId + "_td_name").toggleClass("threaddump-td-mouseover");
++    $("#" + threadId + "_td_state").toggleClass("threaddump-td-mouseover");
++}
++
++function onSearchStringChange() {
++    var searchString = $('#search').val().toLowerCase();
++    //remove the stacktrace
++    collapseAllThreadStackTrace(false)
++    if (searchString.length == 0) {
++        $('tr').each(function() {
++            $(this).removeClass('hidden')
++        })
++    } else {
++        $('tr').each(function(){
++            if($(this).attr('id') && $(this).attr('id').match(/thread_[0-9]+_tr/) ) {
++                var children = $(this).children()
++                var found = false
++                for (i = 0; i < children.length; i++) {
++                    if (children.eq(i).text().toLowerCase().indexOf(searchString) >= 0) {
++                        found = true
++                    }
++                }
++                if (found) {
++                    $(this).removeClass('hidden')
++                } else {
++                    $(this).addClass('hidden')
++                }
++            }
++        });
++    }
++}
+diff --git a/core/src/main/resources/org/apache/spark/ui/static/webui.css b/core/src/main/resources/org/apache/spark/ui/static/webui.css
+index c628a0c..b54e33a 100644
+--- a/core/src/main/resources/org/apache/spark/ui/static/webui.css
++++ b/core/src/main/resources/org/apache/spark/ui/static/webui.css
+@@ -221,10 +221,8 @@ a.expandbutton {
+   cursor: pointer;
+ }
+ 
+-.executor-thread {
+-  background: #E6E6E6;
+-}
+-
+-.non-executor-thread {
+-  background: #FAFAFA;
++.threaddump-td-mouseover {
++  background-color: #49535a !important;
++  color: white;
++  cursor:pointer;
+ }
+\ No newline at end of file
+diff --git a/core/src/main/scala/org/apache/spark/ui/exec/ExecutorThreadDumpPage.scala b/core/src/main/scala/org/apache/spark/ui/exec/ExecutorThreadDumpPage.scala
+index 3298054..0baa36f 100644
+--- a/core/src/main/scala/org/apache/spark/ui/exec/ExecutorThreadDumpPage.scala
++++ b/core/src/main/scala/org/apache/spark/ui/exec/ExecutorThreadDumpPage.scala
+@@ -49,44 +49,49 @@ private[ui] class ExecutorThreadDumpPage(parent: ExecutorsTab) extends WebUIPage
+           }
+         }
+       }.map { thread =>
+-        val threadName = thread.threadName
+-        val className = "accordion-heading " + {
+-          if (threadName.contains("Executor task launch")) {
+-            "executor-thread"
+-          } else {
+-            "non-executor-thread"
+-          }
+-        }
+-        <div class="accordion-group">
+-          <div class={className} onclick="$(this).next().toggleClass('hidden')">
+-            <a class="accordion-toggle">
+-              Thread {thread.threadId}: {threadName} ({thread.threadState})
+-            </a>
+-          </div>
+-          <div class="accordion-body hidden">
+-            <div class="accordion-inner">
+-              <pre>{thread.stackTrace}</pre>
++        val threadId = thread.threadId
++        <tr id={s"thread_${threadId}_tr"} class="accordion-heading"
++            onclick={s"toggleThreadStackTrace($threadId, false)"}
++            onmouseover={s"onMouseOverAndOut($threadId)"}
++            onmouseout={s"onMouseOverAndOut($threadId)"}>
++          <td id={s"${threadId}_td_id"}>{threadId}</td>
++          <td id={s"${threadId}_td_name"}>{thread.threadName}</td>
++          <td id={s"${threadId}_td_state"}>{thread.threadState}</td>
++          <td id={s"${threadId}_td_stacktrace"} class="hidden">{thread.stackTrace}</td>
++        </tr>
++      }
++
++    <div class="row-fluid">
++      <p>Updated at {UIUtils.formatDate(time)}</p>
++      {
++        // scalastyle:off
++        <p><a class="expandbutton" onClick="expandAllThreadStackTrace(true)">
++          Expand All
++        </a></p>
++        <p><a class="expandbutton hidden" onClick="collapseAllThreadStackTrace(true)">
++          Collapse All
++        </a></p>
++        <div class="form-inline">
++        <div class="bs-example" data-example-id="simple-form-inline">
++          <div class="form-group">
++            <div class="input-group">
++              Search: <input type="text" class="form-control" id="search" oninput="onSearchStringChange()"></input>
+             </div>
+           </div>
+         </div>
++        </div>
++        <p></p>
++        // scalastyle:on
+       }
+-
+-      <div class="row-fluid">
+-        <p>Updated at {UIUtils.formatDate(time)}</p>
+-        {
+-          // scalastyle:off
+-          <p><a class="expandbutton"
+-                onClick="$('.accordion-body').removeClass('hidden'); $('.expandbutton').toggleClass('hidden')">
+-            Expand All
+-          </a></p>
+-          <p><a class="expandbutton hidden"
+-                onClick="$('.accordion-body').addClass('hidden'); $('.expandbutton').toggleClass('hidden')">
+-            Collapse All
+-          </a></p>
+-          // scalastyle:on
+-        }
+-        <div class="accordion">{dumpRows}</div>
+-      </div>
++      <table class={UIUtils.TABLE_CLASS_STRIPED + " accordion-group" + " sortable"}>
++        <thead>
++          <th onClick="collapseAllThreadStackTrace(false)">Thread ID</th>
++          <th onClick="collapseAllThreadStackTrace(false)">Thread Name</th>
++          <th onClick="collapseAllThreadStackTrace(false)">Thread State</th>
++        </thead>
++        <tbody>{dumpRows}</tbody>
++      </table>
++    </div>
+     }.getOrElse(Text("Error fetching thread dump"))
+     UIUtils.headerSparkPage(s"Thread dump for executor $executorId", content, parent)
+   }
+-- 
+1.7.9.5
+

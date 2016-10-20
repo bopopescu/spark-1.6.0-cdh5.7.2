@@ -1,0 +1,26 @@
+From 5e5eff8a516de68ff1f79f0492b292ec013a3b15 Mon Sep 17 00:00:00 2001
+From: Mark Grover <mark@apache.org>
+Date: Mon, 11 Jan 2016 16:56:16 -0800
+Subject: [PATCH 028/201] CLOUDERA-BUILD. Use Cloudera's Kafka version to
+ build against, instead of upstream Kafka
+
+---
+ external/kafka/pom.xml |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/external/kafka/pom.xml b/external/kafka/pom.xml
+index c7973bf..58b14c0 100644
+--- a/external/kafka/pom.xml
++++ b/external/kafka/pom.xml
+@@ -51,7 +51,7 @@
+     <dependency>
+       <groupId>org.apache.kafka</groupId>
+       <artifactId>kafka_${scala.binary.version}</artifactId>
+-      <version>0.8.2.1</version>
++      <version>${cdh.kafka1.version}</version>
+       <scope>${flume.deps.scope}</scope>
+       <exclusions>
+         <exclusion>
+-- 
+1.7.9.5
+

@@ -1,0 +1,29 @@
+From 10a981707ed5f5fe495aa0ba438fc1db1c01145d Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Mon, 30 Nov 2015 16:53:31 -0800
+Subject: [PATCH 023/201] CLOUDERA-BUILD. CDH-35052. Write parquet legacy
+ format by default.
+
+Otherwise Hive cannot read decimal fields.
+
+(cherry picked from commit 7086bcf8b48d05cf1c3a6f27e0df9714a5b0f0f8)
+---
+ .../main/scala/org/apache/spark/sql/SQLConf.scala  |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala b/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala
+index bc1dbbb..495f562 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/SQLConf.scala
+@@ -310,7 +310,7 @@ private[spark] object SQLConf {
+ 
+   val PARQUET_WRITE_LEGACY_FORMAT = booleanConf(
+     key = "spark.sql.parquet.writeLegacyFormat",
+-    defaultValue = Some(false),
++    defaultValue = Some(true),
+     doc = "Whether to follow Parquet's format specification when converting Parquet schema to " +
+       "Spark SQL schema and vice versa.")
+ 
+-- 
+1.7.9.5
+

@@ -1,0 +1,49 @@
+From 49a9e61130abffa93997e31f7a1eff63b982aa2d Mon Sep 17 00:00:00 2001
+From: Andrew Bayer <andrew.bayer@gmail.com>
+Date: Fri, 16 Jan 2015 13:02:36 -0800
+Subject: [PATCH 004/201] CLOUDERA-BUILD. Add profile for faster package
+ builds
+
+(cherry picked from commit de79f1b48437031e0a7493bbabae37925bd1553f)
+---
+ pom.xml |   25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+diff --git a/pom.xml b/pom.xml
+index e95d4ab..a11f1ec 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -2578,5 +2578,30 @@
+     <profile>
+       <id>sparkr</id>
+     </profile>
++
++    <profile>
++      <id>cdh.build</id>
++      <activation>
++        <property>
++          <name>${env.JENKINS_URL}</name>
++        </property>
++      </activation>
++      <build>
++        <pluginManagement>
++          <plugins>
++            <plugin>
++              <groupId>net.alchim31.maven</groupId>
++              <artifactId>scala-maven-plugin</artifactId>
++              <version>3.2.0</version>
++              <configuration>
++                <scalaVersion>${scala.version}</scalaVersion>
++                <recompileMode>all</recompileMode>
++                <fork>true</fork>
++              </configuration>
++            </plugin>
++          </plugins>
++        </pluginManagement>
++      </build>
++    </profile>
+   </profiles>
+ </project>
+-- 
+1.7.9.5
+

@@ -1,0 +1,54 @@
+From 46796c71306b3314bc963ad66f702b48aecb9e34 Mon Sep 17 00:00:00 2001
+From: Michael Allman <michael@videoamp.com>
+Date: Mon, 25 Jan 2016 09:51:41 +0000
+Subject: [PATCH 091/201] [SPARK-12755][CORE] Stop the event logger before the
+ DAG scheduler
+
+[SPARK-12755][CORE] Stop the event logger before the DAG scheduler to avoid a race condition where the standalone master attempts to build the app's history UI before the event log is stopped.
+
+This contribution is my original work, and I license this work to the Spark project under the project's open source license.
+
+Author: Michael Allman <michael@videoamp.com>
+
+Closes #10700 from mallman/stop_event_logger_first.
+
+(cherry picked from commit 4ee8191e57cb823a23ceca17908af86e70354554)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit b40e58cf251c22c6b0ba383cc7e67ef6b07d8ec5)
+---
+ .../main/scala/org/apache/spark/SparkContext.scala |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/SparkContext.scala b/core/src/main/scala/org/apache/spark/SparkContext.scala
+index 47fce59..f590747 100644
+--- a/core/src/main/scala/org/apache/spark/SparkContext.scala
++++ b/core/src/main/scala/org/apache/spark/SparkContext.scala
+@@ -1732,12 +1732,6 @@ class SparkContext(config: SparkConf) extends Logging with ExecutorAllocationCli
+     Utils.tryLogNonFatalError {
+       _executorAllocationManager.foreach(_.stop())
+     }
+-    if (_dagScheduler != null) {
+-      Utils.tryLogNonFatalError {
+-        _dagScheduler.stop()
+-      }
+-      _dagScheduler = null
+-    }
+     if (_listenerBusStarted) {
+       Utils.tryLogNonFatalError {
+         listenerBus.stop()
+@@ -1747,6 +1741,12 @@ class SparkContext(config: SparkConf) extends Logging with ExecutorAllocationCli
+     Utils.tryLogNonFatalError {
+       _eventLogger.foreach(_.stop())
+     }
++    if (_dagScheduler != null) {
++      Utils.tryLogNonFatalError {
++        _dagScheduler.stop()
++      }
++      _dagScheduler = null
++    }
+     if (env != null && _heartbeatReceiver != null) {
+       Utils.tryLogNonFatalError {
+         env.rpcEnv.stop(_heartbeatReceiver)
+-- 
+1.7.9.5
+

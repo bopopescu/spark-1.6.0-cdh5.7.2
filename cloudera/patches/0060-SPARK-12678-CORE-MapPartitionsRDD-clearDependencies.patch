@@ -1,0 +1,46 @@
+From dd0a0ddb0ced9bd3f1bac094ce18621895bb0be0 Mon Sep 17 00:00:00 2001
+From: Guillaume Poulin <poulin.guillaume@gmail.com>
+Date: Wed, 6 Jan 2016 21:34:46 -0800
+Subject: [PATCH 060/201] [SPARK-12678][CORE] MapPartitionsRDD
+ clearDependencies
+
+MapPartitionsRDD was keeping a reference to `prev` after a call to
+`clearDependencies` which could lead to memory leak.
+
+Author: Guillaume Poulin <poulin.guillaume@gmail.com>
+
+Closes #10623 from gpoulin/map_partition_deps.
+
+(cherry picked from commit b6738520374637347ab5ae6c801730cdb6b35daa)
+Signed-off-by: Reynold Xin <rxin@databricks.com>
+(cherry picked from commit d061b852274c12784f3feb96c0cdcab39989f8e7)
+---
+ .../org/apache/spark/rdd/MapPartitionsRDD.scala    |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/rdd/MapPartitionsRDD.scala b/core/src/main/scala/org/apache/spark/rdd/MapPartitionsRDD.scala
+index 4312d3a..e4587c9 100644
+--- a/core/src/main/scala/org/apache/spark/rdd/MapPartitionsRDD.scala
++++ b/core/src/main/scala/org/apache/spark/rdd/MapPartitionsRDD.scala
+@@ -25,7 +25,7 @@ import org.apache.spark.{Partition, TaskContext}
+  * An RDD that applies the provided function to every partition of the parent RDD.
+  */
+ private[spark] class MapPartitionsRDD[U: ClassTag, T: ClassTag](
+-    prev: RDD[T],
++    var prev: RDD[T],
+     f: (TaskContext, Int, Iterator[T]) => Iterator[U],  // (TaskContext, partition index, iterator)
+     preservesPartitioning: Boolean = false)
+   extends RDD[U](prev) {
+@@ -36,4 +36,9 @@ private[spark] class MapPartitionsRDD[U: ClassTag, T: ClassTag](
+ 
+   override def compute(split: Partition, context: TaskContext): Iterator[U] =
+     f(context, split.index, firstParent[T].iterator(split, context))
++
++  override def clearDependencies() {
++    super.clearDependencies()
++    prev = null
++  }
+ }
+-- 
+1.7.9.5
+

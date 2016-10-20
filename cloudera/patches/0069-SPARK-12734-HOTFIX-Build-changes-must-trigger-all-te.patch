@@ -1,0 +1,55 @@
+From ba2ef25ee03f0d9c67259b2bf27efa24da7cbfe4 Mon Sep 17 00:00:00 2001
+From: Josh Rosen <joshrosen@databricks.com>
+Date: Mon, 11 Jan 2016 12:56:43 -0800
+Subject: [PATCH 069/201] [SPARK-12734][HOTFIX] Build changes must trigger all
+ tests; clean after install in dep tests
+
+This patch fixes a build/test issue caused by the combination of #10672 and a latent issue in the original `dev/test-dependencies` script.
+
+First, changes which _only_ touched build files were not triggering full Jenkins runs, making it possible for a build change to be merged even though it could cause failures in other tests. The `root` build module now depends on `build`, so all tests will now be run whenever a build-related file is changed.
+
+I also added a `clean` step to the Maven install step in `dev/test-dependencies` in order to address an issue where the dummy JARs stuck around and caused "multiple assembly JARs found" errors in tests.
+
+/cc zsxwing
+
+Author: Josh Rosen <joshrosen@databricks.com>
+
+Closes #10704 from JoshRosen/fix-build-test-problems.
+
+(cherry picked from commit a44991453a43615028083ba9546f5cd93112f6bd)
+Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+(cherry picked from commit 3b32aa9e29506606d4ca2407aa65a1aab8794805)
+---
+ dev/sparktestsupport/modules.py |    2 +-
+ dev/test-dependencies.sh        |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/dev/sparktestsupport/modules.py b/dev/sparktestsupport/modules.py
+index 47cd600..21667d5 100644
+--- a/dev/sparktestsupport/modules.py
++++ b/dev/sparktestsupport/modules.py
+@@ -435,7 +435,7 @@ yarn = Module(
+ # No other modules should directly depend on this module.
+ root = Module(
+     name="root",
+-    dependencies=[],
++    dependencies=[build],  # Changes to build should trigger all tests.
+     source_file_regexes=[],
+     # In order to run all of the tests, enable every test profile:
+     build_profile_flags=list(set(
+diff --git a/dev/test-dependencies.sh b/dev/test-dependencies.sh
+index 47ae15b..efb49f7 100755
+--- a/dev/test-dependencies.sh
++++ b/dev/test-dependencies.sh
+@@ -76,7 +76,7 @@ for HADOOP_PROFILE in "${HADOOP_PROFILES[@]}"; do
+     HADOOP_MODULE_PROFILES="-Phive-thriftserver -Pyarn -Phive"
+   fi
+   echo "Performing Maven install for $HADOOP_PROFILE"
+-  $MVN $HADOOP_MODULE_PROFILES -P$HADOOP_PROFILE jar:jar jar:test-jar install:install -q
++  $MVN $HADOOP_MODULE_PROFILES -P$HADOOP_PROFILE jar:jar jar:test-jar install:install clean -q
+ 
+   echo "Performing Maven validate for $HADOOP_PROFILE"
+   $MVN $HADOOP_MODULE_PROFILES -P$HADOOP_PROFILE validate -q
+-- 
+1.7.9.5
+

@@ -1,0 +1,113 @@
+From dad031ce067afc4f443d07f4c56147232daa5028 Mon Sep 17 00:00:00 2001
+From: Daoyuan Wang <daoyuan.wang@intel.com>
+Date: Tue, 2 Feb 2016 11:09:40 -0800
+Subject: [PATCH 121/201] [SPARK-13056][SQL] map column would throw NPE if
+ value is null
+
+Jira:
+https://issues.apache.org/jira/browse/SPARK-13056
+
+Create a map like
+{ "a": "somestring", "b": null}
+Query like
+SELECT col["b"] FROM t1;
+NPE would be thrown.
+
+Author: Daoyuan Wang <daoyuan.wang@intel.com>
+
+Closes #10964 from adrian-wang/npewriter.
+
+(cherry picked from commit 358300c795025735c3b2f96c5447b1b227d4abc1)
+Signed-off-by: Michael Armbrust <michael@databricks.com>
+
+Conflicts:
+	sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala
+
+(cherry picked from commit 3c92333ee78f249dae37070d3b6558b9c92ec7f4)
+---
+ .../expressions/complexTypeExtractors.scala        |   15 +++++++++------
+ .../scala/org/apache/spark/sql/SQLQuerySuite.scala |    9 +++++++++
+ 2 files changed, 18 insertions(+), 6 deletions(-)
+
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/complexTypeExtractors.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/complexTypeExtractors.scala
+index 1f79683..2c57d14 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/complexTypeExtractors.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/complexTypeExtractors.scala
+@@ -211,7 +211,7 @@ case class GetArrayItem(child: Expression, ordinal: Expression)
+   protected override def nullSafeEval(value: Any, ordinal: Any): Any = {
+     val baseValue = value.asInstanceOf[ArrayData]
+     val index = ordinal.asInstanceOf[Number].intValue()
+-    if (index >= baseValue.numElements() || index < 0) {
++    if (index >= baseValue.numElements() || index < 0 || baseValue.isNullAt(index)) {
+       null
+     } else {
+       baseValue.get(index, dataType)
+@@ -260,6 +260,7 @@ case class GetMapValue(child: Expression, key: Expression)
+     val map = value.asInstanceOf[MapData]
+     val length = map.numElements()
+     val keys = map.keyArray()
++    val values = map.valueArray()
+ 
+     var i = 0
+     var found = false
+@@ -271,10 +272,10 @@ case class GetMapValue(child: Expression, key: Expression)
+       }
+     }
+ 
+-    if (!found) {
++    if (!found || values.isNullAt(i)) {
+       null
+     } else {
+-      map.valueArray().get(i, dataType)
++      values.get(i, dataType)
+     }
+   }
+ 
+@@ -284,10 +285,12 @@ case class GetMapValue(child: Expression, key: Expression)
+     val keys = ctx.freshName("keys")
+     val found = ctx.freshName("found")
+     val key = ctx.freshName("key")
++    val values = ctx.freshName("values")
+     nullSafeCodeGen(ctx, ev, (eval1, eval2) => {
+       s"""
+         final int $length = $eval1.numElements();
+         final ArrayData $keys = $eval1.keyArray();
++        final ArrayData $values = $eval1.valueArray();
+ 
+         int $index = 0;
+         boolean $found = false;
+@@ -300,10 +303,10 @@ case class GetMapValue(child: Expression, key: Expression)
+           }
+         }
+ 
+-        if ($found) {
+-          ${ev.value} = ${ctx.getValue(eval1 + ".valueArray()", dataType, index)};
+-        } else {
++        if (!$found || $values.isNullAt($index)) {
+           ${ev.isNull} = true;
++        } else {
++          ${ev.value} = ${ctx.getValue(values, dataType, index)};
+         }
+       """
+     })
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala b/sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala
+index bb82b56..f630eb5 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala
+@@ -2028,4 +2028,13 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
+       Row(false) :: Row(true) :: Nil)
+   }
+ 
++  test("SPARK-13056: Null in map value causes NPE") {
++    val df = Seq(1 -> Map("abc" -> "somestring", "cba" -> null)).toDF("key", "value")
++    withTempTable("maptest") {
++      df.registerTempTable("maptest")
++      // local optimization will by pass codegen code, so we should keep the filter `key=1`
++      checkAnswer(sql("SELECT value['abc'] FROM maptest where key = 1"), Row("somestring"))
++      checkAnswer(sql("SELECT value['cba'] FROM maptest where key = 1"), Row(null))
++    }
++  }
+ }
+-- 
+1.7.9.5
+

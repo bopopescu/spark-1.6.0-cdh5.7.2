@@ -1,0 +1,59 @@
+From 6e3f1c60d97f95ba1c34eae385b42cb0db649d8c Mon Sep 17 00:00:00 2001
+From: Mortada Mehyar <mortada.mehyar@gmail.com>
+Date: Sat, 23 Jan 2016 11:36:33 +0000
+Subject: [PATCH 088/201] =?UTF-8?q?[SPARK-12760][DOCS]=20invalid=20lambda=20?=
+ =?UTF-8?q?expression=20in=20python=20example=20for=20=E2=80=A6?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+…local vs cluster
+
+srowen thanks for the PR at https://github.com/apache/spark/pull/10866! sorry it took me a while.
+
+This is related to https://github.com/apache/spark/pull/10866, basically the assignment in the lambda expression in the python example is actually invalid
+
+```
+In [1]: data = [1, 2, 3, 4, 5]
+In [2]: counter = 0
+In [3]: rdd = sc.parallelize(data)
+In [4]: rdd.foreach(lambda x: counter += x)
+  File "<ipython-input-4-fcb86c182bad>", line 1
+    rdd.foreach(lambda x: counter += x)
+                                   ^
+SyntaxError: invalid syntax
+```
+
+Author: Mortada Mehyar <mortada.mehyar@gmail.com>
+
+Closes #10867 from mortada/doc_python_fix.
+
+(cherry picked from commit 56f57f894eafeda48ce118eec16ecb88dbd1b9dc)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit e8ae242f925ab747aa5a7bba581da66195e31110)
+---
+ docs/programming-guide.md |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/docs/programming-guide.md b/docs/programming-guide.md
+index f823b89..2b27262 100644
+--- a/docs/programming-guide.md
++++ b/docs/programming-guide.md
+@@ -789,9 +789,12 @@ counter = 0
+ rdd = sc.parallelize(data)
+ 
+ # Wrong: Don't do this!!
+-rdd.foreach(lambda x: counter += x)
++def increment_counter(x):
++    global counter
++    counter += x
++rdd.foreach(increment_counter)
+ 
+-print("Counter value: " + counter)
++print("Counter value: ", counter)
+ 
+ {% endhighlight %}
+ </div>
+-- 
+1.7.9.5
+

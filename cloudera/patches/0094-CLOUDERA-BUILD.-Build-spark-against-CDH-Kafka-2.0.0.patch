@@ -1,0 +1,25 @@
+From 47e752dea3d499bcd97194c6b48a928f011e2ede Mon Sep 17 00:00:00 2001
+From: Mark Grover <mark@apache.org>
+Date: Tue, 9 Feb 2016 13:12:04 -0800
+Subject: [PATCH 094/201] CLOUDERA-BUILD. Build spark against CDH Kafka 2.0.0
+
+---
+ external/kafka/pom.xml |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/external/kafka/pom.xml b/external/kafka/pom.xml
+index 58b14c0..d674485 100644
+--- a/external/kafka/pom.xml
++++ b/external/kafka/pom.xml
+@@ -51,7 +51,7 @@
+     <dependency>
+       <groupId>org.apache.kafka</groupId>
+       <artifactId>kafka_${scala.binary.version}</artifactId>
+-      <version>${cdh.kafka1.version}</version>
++      <version>${cdh.kafka.version}</version>
+       <scope>${flume.deps.scope}</scope>
+       <exclusions>
+         <exclusion>
+-- 
+1.7.9.5
+

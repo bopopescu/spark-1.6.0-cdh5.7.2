@@ -1,0 +1,95 @@
+From da1e45dbc1e826c8c94c9d4d9b5b8b35acc010b8 Mon Sep 17 00:00:00 2001
+From: Josh Rosen <joshrosen@databricks.com>
+Date: Mon, 11 Jan 2016 00:36:52 -0800
+Subject: [PATCH 068/201] [SPARK-12734][BUILD] Backport Netty exclusion +
+ Maven enforcer fixes to branch-1.6
+
+This patch backports the Netty exclusion fixes from #10672 to branch-1.6.
+
+Author: Josh Rosen <joshrosen@databricks.com>
+
+Closes #10691 from JoshRosen/netty-exclude-16-backport.
+
+(cherry picked from commit 43b72d83e1d0c426d00d29e54ab7d14579700330)
+---
+ dev/test-dependencies.sh |   17 ++++-------------
+ pom.xml                  |   21 ++++++++++++++++++++-
+ 2 files changed, 24 insertions(+), 14 deletions(-)
+
+diff --git a/dev/test-dependencies.sh b/dev/test-dependencies.sh
+index 30836a3..47ae15b 100755
+--- a/dev/test-dependencies.sh
++++ b/dev/test-dependencies.sh
+@@ -76,19 +76,10 @@ for HADOOP_PROFILE in "${HADOOP_PROFILES[@]}"; do
+     HADOOP_MODULE_PROFILES="-Phive-thriftserver -Pyarn -Phive"
+   fi
+   echo "Performing Maven install for $HADOOP_PROFILE"
+-  $MVN $HADOOP_MODULE_PROFILES -P$HADOOP_PROFILE jar:jar install:install -q \
+-    -pl '!assembly' \
+-    -pl '!examples' \
+-    -pl '!external/flume-assembly' \
+-    -pl '!external/kafka-assembly' \
+-    -pl '!external/twitter' \
+-    -pl '!external/flume' \
+-    -pl '!external/mqtt' \
+-    -pl '!external/mqtt-assembly' \
+-    -pl '!external/zeromq' \
+-    -pl '!external/kafka' \
+-    -pl '!tags' \
+-    -DskipTests
++  $MVN $HADOOP_MODULE_PROFILES -P$HADOOP_PROFILE jar:jar jar:test-jar install:install -q
++
++  echo "Performing Maven validate for $HADOOP_PROFILE"
++  $MVN $HADOOP_MODULE_PROFILES -P$HADOOP_PROFILE validate -q
+ 
+   echo "Generating dependency manifest for $HADOOP_PROFILE"
+   mkdir -p dev/pr-deps
+diff --git a/pom.xml b/pom.xml
+index bee9098..a6c2b37 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1178,6 +1178,12 @@
+         <artifactId>zookeeper</artifactId>
+         <version>${zookeeper.version}</version>
+         <scope>${hadoop.deps.scope}</scope>
++        <exclusions>
++          <exclusion>
++            <groupId>org.jboss.netty</groupId>
++            <artifactId>netty</artifactId>
++          </exclusion>
++        </exclusions>
+       </dependency>
+       <dependency>
+         <groupId>org.codehaus.jackson</groupId>
+@@ -1907,7 +1913,7 @@
+         <plugin>
+           <groupId>org.apache.maven.plugins</groupId>
+           <artifactId>maven-enforcer-plugin</artifactId>
+-          <version>1.4</version>
++          <version>1.4.1</version>
+           <executions>
+             <execution>
+               <id>enforce-versions</id>
+@@ -1922,6 +1928,19 @@
+                   <requireJavaVersion>
+                     <version>${java.version}</version>
+                   </requireJavaVersion>
++                  <bannedDependencies>
++                    <excludes>
++                      <!--
++                        Akka depends on io.netty:netty, which puts classes under the org.jboss.netty
++                        package. This conflicts with the classes in org.jboss.netty:netty
++                        artifact, so we have to ban that artifact here. In Netty 4.x, the classes
++                        are under the io.netty package, so it's fine for us to depend on both
++                        io.netty:netty and io.netty:netty-all.
++                       -->
++                      <exclude>org.jboss.netty</exclude>
++                    </excludes>
++                    <searchTransitive>true</searchTransitive>
++                  </bannedDependencies>
+                 </rules>
+               </configuration>
+             </execution>
+-- 
+1.7.9.5
+

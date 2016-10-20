@@ -1,0 +1,51 @@
+From 7196a178bb9e9893ab792573347b8f8b05fc060b Mon Sep 17 00:00:00 2001
+From: Jeff Lam <sha0lin@alumni.carnegiemellon.edu>
+Date: Sat, 16 Jan 2016 10:41:40 +0000
+Subject: [PATCH 149/201] [SPARK-12722][DOCS] Fixed typo in Pipeline example
+
+http://spark.apache.org/docs/latest/ml-guide.html#example-pipeline
+```
+val sameModel = Pipeline.load("/tmp/spark-logistic-regression-model")
+```
+should be
+```
+val sameModel = PipelineModel.load("/tmp/spark-logistic-regression-model")
+```
+cc: jkbradley
+
+Author: Jeff Lam <sha0lin@alumni.carnegiemellon.edu>
+
+Closes #10769 from Agent007/SPARK-12722.
+
+(cherry picked from commit 86972fa52152d2149b88ba75be048a6986006285)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit 5803fce900cf74508e9520370b8d777862a15a49)
+---
+ docs/ml-guide.md |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/docs/ml-guide.md b/docs/ml-guide.md
+index 44a316a..6d96596 100644
+--- a/docs/ml-guide.md
++++ b/docs/ml-guide.md
+@@ -428,7 +428,7 @@ This example follows the simple text document `Pipeline` illustrated in the figu
+ 
+ <div data-lang="scala">
+ {% highlight scala %}
+-import org.apache.spark.ml.Pipeline
++import org.apache.spark.ml.{Pipeline, PipelineModel}
+ import org.apache.spark.ml.classification.LogisticRegression
+ import org.apache.spark.ml.feature.{HashingTF, Tokenizer}
+ import org.apache.spark.mllib.linalg.Vector
+@@ -466,7 +466,7 @@ model.save("/tmp/spark-logistic-regression-model")
+ pipeline.save("/tmp/unfit-lr-model")
+ 
+ // and load it back in during production
+-val sameModel = Pipeline.load("/tmp/spark-logistic-regression-model")
++val sameModel = PipelineModel.load("/tmp/spark-logistic-regression-model")
+ 
+ // Prepare test documents, which are unlabeled (id, text) tuples.
+ val test = sqlContext.createDataFrame(Seq(
+-- 
+1.7.9.5
+

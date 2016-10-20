@@ -1,0 +1,37 @@
+From 6897674878453561b7b914f0b83e79b706940b9e Mon Sep 17 00:00:00 2001
+From: Yin Huai <yhuai@databricks.com>
+Date: Tue, 26 Jan 2016 08:34:10 -0800
+Subject: [PATCH 138/201] [SPARK-12682][SQL][HOT-FIX] Fix test compilation
+
+Author: Yin Huai <yhuai@databricks.com>
+
+Closes #10925 from yhuai/branch-1.6-hot-fix.
+
+(cherry picked from commit 6ce3dd940def9257982d556cd3adf307fc2fe8a4)
+---
+ .../spark/sql/hive/MetastoreDataSourcesSuite.scala |    2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/MetastoreDataSourcesSuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/MetastoreDataSourcesSuite.scala
+index 2061d2c..cd83178 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/MetastoreDataSourcesSuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/MetastoreDataSourcesSuite.scala
+@@ -854,7 +854,6 @@ class MetastoreDataSourcesSuite extends QueryTest with SQLTestUtils with TestHiv
+       tableIdent = TableIdentifier("not_skip_hive_metadata"),
+       userSpecifiedSchema = Some(schema),
+       partitionColumns = Array.empty[String],
+-      bucketSpec = None,
+       provider = "parquet",
+       options = Map("path" -> "just a dummy path", "skipHiveMetadata" -> "false"),
+       isExternal = false)
+@@ -868,7 +867,6 @@ class MetastoreDataSourcesSuite extends QueryTest with SQLTestUtils with TestHiv
+       tableIdent = TableIdentifier("skip_hive_metadata"),
+       userSpecifiedSchema = Some(schema),
+       partitionColumns = Array.empty[String],
+-      bucketSpec = None,
+       provider = "parquet",
+       options = Map("path" -> "just a dummy path", "skipHiveMetadata" -> "true"),
+       isExternal = false)
+-- 
+1.7.9.5
+

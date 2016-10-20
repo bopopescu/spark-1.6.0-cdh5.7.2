@@ -1,0 +1,101 @@
+From b2e77ad065557c73890fe28402bd4d7cfa298f4a Mon Sep 17 00:00:00 2001
+From: Yaron Weinsberg <wyaron@gmail.com>
+Date: Tue, 29 Dec 2015 05:19:11 +0900
+Subject: [PATCH 041/201] [SPARK-12517] add default RDD name for one created
+ via sc.textFile
+
+The feature was first added at commit: 7b877b27053bfb7092e250e01a3b887e1b50a109 but was later removed (probably by mistake) at commit: fc8b58195afa67fbb75b4c8303e022f703cbf007.
+This change sets the default path of RDDs created via sc.textFile(...) to the path argument.
+
+Here is the symptom:
+
+* Using spark-1.5.2-bin-hadoop2.6:
+
+scala> sc.textFile("/home/root/.bashrc").name
+res5: String = null
+
+scala> sc.binaryFiles("/home/root/.bashrc").name
+res6: String = /home/root/.bashrc
+
+* while using Spark 1.3.1:
+
+scala> sc.textFile("/home/root/.bashrc").name
+res0: String = /home/root/.bashrc
+
+scala> sc.binaryFiles("/home/root/.bashrc").name
+res1: String = /home/root/.bashrc
+
+Author: Yaron Weinsberg <wyaron@gmail.com>
+Author: yaron <yaron@il.ibm.com>
+
+Closes #10456 from wyaron/master.
+
+(cherry picked from commit 73b70f076d4e22396b7e145f2ce5974fbf788048)
+Signed-off-by: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+(cherry picked from commit 1fbcb6e7be9cd9fa5255837cfc5358f2283f4aaf)
+---
+ .../main/scala/org/apache/spark/SparkContext.scala |    4 ++--
+ .../scala/org/apache/spark/SparkContextSuite.scala |   25 ++++++++++++++++++++
+ 2 files changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/SparkContext.scala b/core/src/main/scala/org/apache/spark/SparkContext.scala
+index 194ecc0..47fce59 100644
+--- a/core/src/main/scala/org/apache/spark/SparkContext.scala
++++ b/core/src/main/scala/org/apache/spark/SparkContext.scala
+@@ -836,7 +836,7 @@ class SparkContext(config: SparkConf) extends Logging with ExecutorAllocationCli
+       minPartitions: Int = defaultMinPartitions): RDD[String] = withScope {
+     assertNotStopped()
+     hadoopFile(path, classOf[TextInputFormat], classOf[LongWritable], classOf[Text],
+-      minPartitions).map(pair => pair._2.toString)
++      minPartitions).map(pair => pair._2.toString).setName(path)
+   }
+ 
+   /**
+@@ -885,7 +885,7 @@ class SparkContext(config: SparkConf) extends Logging with ExecutorAllocationCli
+       classOf[Text],
+       classOf[Text],
+       updateConf,
+-      minPartitions).setName(path).map(record => (record._1.toString, record._2.toString))
++      minPartitions).map(record => (record._1.toString, record._2.toString)).setName(path)
+   }
+ 
+   /**
+diff --git a/core/src/test/scala/org/apache/spark/SparkContextSuite.scala b/core/src/test/scala/org/apache/spark/SparkContextSuite.scala
+index d4f2ea8..172ef05 100644
+--- a/core/src/test/scala/org/apache/spark/SparkContextSuite.scala
++++ b/core/src/test/scala/org/apache/spark/SparkContextSuite.scala
+@@ -274,6 +274,31 @@ class SparkContextSuite extends SparkFunSuite with LocalSparkContext {
+     }
+   }
+ 
++  test("Default path for file based RDDs is properly set (SPARK-12517)") {
++    sc = new SparkContext(new SparkConf().setAppName("test").setMaster("local"))
++
++    // Test filetextFile, wholeTextFiles, binaryFiles, hadoopFile and
++    // newAPIHadoopFile for setting the default path as the RDD name
++    val mockPath = "default/path/for/"
++
++    var targetPath = mockPath + "textFile"
++    assert(sc.textFile(targetPath).name === targetPath)
++
++    targetPath = mockPath + "wholeTextFiles"
++    assert(sc.wholeTextFiles(targetPath).name === targetPath)
++
++    targetPath = mockPath + "binaryFiles"
++    assert(sc.binaryFiles(targetPath).name === targetPath)
++
++    targetPath = mockPath + "hadoopFile"
++    assert(sc.hadoopFile(targetPath).name === targetPath)
++
++    targetPath = mockPath + "newAPIHadoopFile"
++    assert(sc.newAPIHadoopFile(targetPath).name === targetPath)
++
++    sc.stop()
++  }
++
+   test("calling multiple sc.stop() must not throw any exception") {
+     noException should be thrownBy {
+       sc = new SparkContext(new SparkConf().setAppName("test").setMaster("local"))
+-- 
+1.7.9.5
+

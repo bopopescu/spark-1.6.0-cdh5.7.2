@@ -1,0 +1,57 @@
+From 58316d9818dcdd956c7ff8a63c58fc962f6ed32d Mon Sep 17 00:00:00 2001
+From: Carson Wang <carson.wang@intel.com>
+Date: Wed, 13 Jan 2016 13:28:39 -0800
+Subject: [PATCH 077/201] [SPARK-12690][CORE] Fix NPE in
+ UnsafeInMemorySorter.free()
+
+I hit the exception below. The `UnsafeKVExternalSorter` does pass `null` as the consumer when creating an `UnsafeInMemorySorter`. Normally the NPE doesn't occur because the `inMemSorter` is set to null later and the `free()` method is not called. It happens when there is another exception like OOM thrown before setting `inMemSorter` to null. Anyway, we can add the null check to avoid it.
+
+```
+ERROR spark.TaskContextImpl: Error in TaskCompletionListener
+java.lang.NullPointerException
+        at org.apache.spark.util.collection.unsafe.sort.UnsafeInMemorySorter.free(UnsafeInMemorySorter.java:110)
+        at org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter.cleanupResources(UnsafeExternalSorter.java:288)
+        at org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter$1.onTaskCompletion(UnsafeExternalSorter.java:141)
+        at org.apache.spark.TaskContextImpl$$anonfun$markTaskCompleted$1.apply(TaskContextImpl.scala:79)
+        at org.apache.spark.TaskContextImpl$$anonfun$markTaskCompleted$1.apply(TaskContextImpl.scala:77)
+        at scala.collection.mutable.ResizableArray$class.foreach(ResizableArray.scala:59)
+        at scala.collection.mutable.ArrayBuffer.foreach(ArrayBuffer.scala:47)
+        at org.apache.spark.TaskContextImpl.markTaskCompleted(TaskContextImpl.scala:77)
+        at org.apache.spark.scheduler.Task.run(Task.scala:91)
+        at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:213)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+        at java.lang.Thread.run(Thread.java:722)
+```
+
+Author: Carson Wang <carson.wang@intel.com>
+
+Closes #10637 from carsonwang/FixNPE.
+
+(cherry picked from commit eabc7b8ee7e809bab05361ed154f87bff467bd88)
+Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+(cherry picked from commit 26f13faa981a51046ed1f16b9c3ee42ac5f6b6da)
+---
+ .../unsafe/sort/UnsafeInMemorySorter.java          |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/core/src/main/java/org/apache/spark/util/collection/unsafe/sort/UnsafeInMemorySorter.java b/core/src/main/java/org/apache/spark/util/collection/unsafe/sort/UnsafeInMemorySorter.java
+index dce1f15..98a7314 100644
+--- a/core/src/main/java/org/apache/spark/util/collection/unsafe/sort/UnsafeInMemorySorter.java
++++ b/core/src/main/java/org/apache/spark/util/collection/unsafe/sort/UnsafeInMemorySorter.java
+@@ -107,8 +107,10 @@ public final class UnsafeInMemorySorter {
+    * Free the memory used by pointer array.
+    */
+   public void free() {
+-    consumer.freeArray(array);
+-    array = null;
++    if (consumer != null) {
++      consumer.freeArray(array);
++      array = null;
++    }
+   }
+ 
+   public void reset() {
+-- 
+1.7.9.5
+

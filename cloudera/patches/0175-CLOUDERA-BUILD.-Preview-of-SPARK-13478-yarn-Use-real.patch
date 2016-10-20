@@ -1,0 +1,136 @@
+From 5dbf6a27fdc39940b7d3c3b22888ae725bd4e9bf Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Wed, 24 Feb 2016 15:30:39 -0800
+Subject: [PATCH 175/201] CLOUDERA-BUILD. Preview of "[SPARK-13478] [yarn] Use
+ real user when fetching delegation tokens.".
+
+The Hive client library is not smart enough to notice that the current
+user is a proxy user; so when using a proxy user, it fails to fetch
+delegation tokens from the metastore because of a missing kerberos
+TGT for the current user.
+
+To fix it, just run the code that fetches the delegation token as the
+real logged in user.
+
+Tested on a kerberos cluster both submitting normally and with a proxy
+user; Hive and HBase tokens are retrieved correctly in both cases.
+
+(cherry picked from commit 45c5e66aa4ee610e920e27ec8ead6ebacba03a44)
+---
+ .../spark/deploy/yarn/YarnSparkHadoopUtil.scala    |   47 +++++++++++++++-----
+ .../deploy/yarn/YarnSparkHadoopUtilSuite.scala     |    2 +-
+ 2 files changed, 37 insertions(+), 12 deletions(-)
+
+diff --git a/yarn/src/main/scala/org/apache/spark/deploy/yarn/YarnSparkHadoopUtil.scala b/yarn/src/main/scala/org/apache/spark/deploy/yarn/YarnSparkHadoopUtil.scala
+index a290ebe..a9b643c 100644
+--- a/yarn/src/main/scala/org/apache/spark/deploy/yarn/YarnSparkHadoopUtil.scala
++++ b/yarn/src/main/scala/org/apache/spark/deploy/yarn/YarnSparkHadoopUtil.scala
+@@ -18,7 +18,9 @@
+ package org.apache.spark.deploy.yarn
+ 
+ import java.io.File
++import java.lang.reflect.UndeclaredThrowableException
+ import java.nio.charset.StandardCharsets.UTF_8
++import java.security.PrivilegedExceptionAction
+ import java.util.regex.Matcher
+ import java.util.regex.Pattern
+ 
+@@ -156,7 +158,7 @@ class YarnSparkHadoopUtil extends SparkHadoopUtil {
+    */
+   def obtainTokenForHiveMetastore(conf: Configuration): Option[Token[DelegationTokenIdentifier]] = {
+     try {
+-      obtainTokenForHiveMetastoreInner(conf, UserGroupInformation.getCurrentUser().getUserName)
++      obtainTokenForHiveMetastoreInner(conf)
+     } catch {
+       case e: ClassNotFoundException =>
+         logInfo(s"Hive class not found $e")
+@@ -171,8 +173,8 @@ class YarnSparkHadoopUtil extends SparkHadoopUtil {
+    * @param username the username of the principal requesting the delegating token.
+    * @return a delegation token
+    */
+-  private[yarn] def obtainTokenForHiveMetastoreInner(conf: Configuration,
+-      username: String): Option[Token[DelegationTokenIdentifier]] = {
++  private[yarn] def obtainTokenForHiveMetastoreInner(conf: Configuration):
++      Option[Token[DelegationTokenIdentifier]] = {
+     val mirror = universe.runtimeMirror(Utils.getContextOrSparkClassLoader)
+ 
+     // the hive configuration class is a subclass of Hadoop Configuration, so can be cast down
+@@ -187,11 +189,12 @@ class YarnSparkHadoopUtil extends SparkHadoopUtil {
+ 
+     // Check for local metastore
+     if (metastoreUri.nonEmpty) {
+-      require(username.nonEmpty, "Username undefined")
+       val principalKey = "hive.metastore.kerberos.principal"
+       val principal = hiveConf.getTrimmed(principalKey, "")
+       require(principal.nonEmpty, "Hive principal $principalKey undefined")
+-      logDebug(s"Getting Hive delegation token for $username against $principal at $metastoreUri")
++      val currentUser = UserGroupInformation.getCurrentUser()
++      logDebug(s"Getting Hive delegation token for ${currentUser.getUserName()} against " +
++        s"$principal at $metastoreUri")
+       val hiveClass = mirror.classLoader.loadClass("org.apache.hadoop.hive.ql.metadata.Hive")
+       val closeCurrent = hiveClass.getMethod("closeCurrent")
+       try {
+@@ -200,12 +203,14 @@ class YarnSparkHadoopUtil extends SparkHadoopUtil {
+           classOf[String], classOf[String])
+         val getHive = hiveClass.getMethod("get", hiveConfClass)
+ 
+-        // invoke
+-        val hive = getHive.invoke(null, hiveConf)
+-        val tokenStr = getDelegationToken.invoke(hive, username, principal).asInstanceOf[String]
+-        val hive2Token = new Token[DelegationTokenIdentifier]()
+-        hive2Token.decodeFromUrlString(tokenStr)
+-        Some(hive2Token)
++        doAsRealUser {
++          val hive = getHive.invoke(null, hiveConf)
++          val tokenStr = getDelegationToken.invoke(hive, currentUser.getUserName(), principal)
++            .asInstanceOf[String]
++          val hive2Token = new Token[DelegationTokenIdentifier]()
++          hive2Token.decodeFromUrlString(tokenStr)
++          Some(hive2Token)
++        }
+       } finally {
+         Utils.tryLogNonFatalError {
+           closeCurrent.invoke(null)
+@@ -216,6 +221,26 @@ class YarnSparkHadoopUtil extends SparkHadoopUtil {
+       None
+     }
+   }
++
++  /**
++   * Run some code as the real logged in user (which may differ from the current user, for
++   * example, when using proxying).
++   */
++  private def doAsRealUser[T](fn: => T): T = {
++    val currentUser = UserGroupInformation.getCurrentUser()
++    val realUser = Option(currentUser.getRealUser()).getOrElse(currentUser)
++
++   // For some reason the Scala-generated anonymous class ends up causing an
++   // UndeclaredThrowableException, even if you annotate the method with @throws.
++   try {
++      realUser.doAs(new PrivilegedExceptionAction[T]() {
++        override def run(): T = fn
++      })
++    } catch {
++      case e: UndeclaredThrowableException => throw Option(e.getCause()).getOrElse(e)
++    }
++  }
++
+ }
+ 
+ object YarnSparkHadoopUtil {
+diff --git a/yarn/src/test/scala/org/apache/spark/deploy/yarn/YarnSparkHadoopUtilSuite.scala b/yarn/src/test/scala/org/apache/spark/deploy/yarn/YarnSparkHadoopUtilSuite.scala
+index a70e66d..cc57e17 100644
+--- a/yarn/src/test/scala/org/apache/spark/deploy/yarn/YarnSparkHadoopUtilSuite.scala
++++ b/yarn/src/test/scala/org/apache/spark/deploy/yarn/YarnSparkHadoopUtilSuite.scala
+@@ -257,7 +257,7 @@ class YarnSparkHadoopUtilSuite extends SparkFunSuite with Matchers with Logging
+     hadoopConf.set("hive.metastore.uris", "http://localhost:0")
+     val util = new YarnSparkHadoopUtil
+     assertNestedHiveException(intercept[InvocationTargetException] {
+-      util.obtainTokenForHiveMetastoreInner(hadoopConf, "alice")
++      util.obtainTokenForHiveMetastoreInner(hadoopConf)
+     })
+     // expect exception trapping code to unwind this hive-side exception
+     assertNestedHiveException(intercept[InvocationTargetException] {
+-- 
+1.7.9.5
+

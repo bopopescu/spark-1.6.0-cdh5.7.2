@@ -1,0 +1,34 @@
+From 27f9b2abefde5d241f6d83c0f2265fa3b9419669 Mon Sep 17 00:00:00 2001
+From: Andy Grove <andygrove73@gmail.com>
+Date: Mon, 25 Jan 2016 09:22:10 +0000
+Subject: [PATCH 104/201] [SPARK-12932][JAVA API] improved error message for
+ java type inference failure
+
+Author: Andy Grove <andygrove73@gmail.com>
+
+Closes #10865 from andygrove/SPARK-12932.
+
+(cherry picked from commit d8e480521e362bc6bc5d8ebcea9b2d50f72a71b9)
+Signed-off-by: Sean Owen <sowen@cloudera.com>
+(cherry picked from commit 88114d3d87f41827ffa9f683edce5e85fdb724ff)
+---
+ .../spark/sql/catalyst/JavaTypeInference.scala     |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/JavaTypeInference.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/JavaTypeInference.scala
+index ed153d1..4c00803 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/JavaTypeInference.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/JavaTypeInference.scala
+@@ -407,7 +407,8 @@ object JavaTypeInference {
+               expressions.Literal(fieldName) :: extractorFor(fieldValue, fieldType) :: Nil
+             })
+           } else {
+-            throw new UnsupportedOperationException(s"no encoder found for ${other.getName}")
++            throw new UnsupportedOperationException(
++              s"Cannot infer type for class ${other.getName} because it is not bean-compliant")
+           }
+       }
+     }
+-- 
+1.7.9.5
+

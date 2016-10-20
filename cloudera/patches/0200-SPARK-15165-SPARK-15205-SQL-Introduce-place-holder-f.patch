@@ -1,0 +1,763 @@
+From d30e4bfa0783744cca2aea6cf3ddc2997c65dc92 Mon Sep 17 00:00:00 2001
+From: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+Date: Fri, 20 May 2016 15:50:06 -0700
+Subject: [PATCH 200/201] [SPARK-15165] [SPARK-15205] [SQL] Introduce place
+ holder for comments in generated code (branch-1.6)
+
+This PR introduce place holder for comment in generated code and the purpose is same for #12939 but much safer.
+
+Generated code to be compiled doesn't include actual comments but includes place holder instead.
+
+Place holders in generated code will be replaced with actual comments only at the time of logging.
+
+Also, this PR can resolve SPARK-15205.
+
+(Please explain how this patch was tested. E.g. unit tests, integration tests, manual tests)
+
+Added new test cases.
+
+Author: Kousuke Saruta <sarutak@oss.nttdata.co.jp>
+
+Closes #13230 from sarutak/SPARK-15165-branch-1.6.
+
+(cherry picked from commit 9a18115a82c8bdc4f6f50df2e968e5aba979f53b)
+---
+ .../sql/catalyst/expressions/Expression.scala      |   16 +-
+ .../expressions/codegen/CodeFormatter.scala        |   11 +-
+ .../expressions/codegen/CodeGenerator.scala        |   59 ++++-
+ .../expressions/codegen/CodegenFallback.scala      |    3 +-
+ .../codegen/GenerateMutableProjection.scala        |    3 +-
+ .../expressions/codegen/GenerateOrdering.scala     |    3 +-
+ .../expressions/codegen/GeneratePredicate.scala    |    3 +-
+ .../expressions/codegen/GenerateProjection.scala   |    3 +-
+ .../codegen/GenerateSafeProjection.scala           |    3 +-
+ .../codegen/GenerateUnsafeProjection.scala         |    3 +-
+ .../codegen/GenerateUnsafeRowJoiner.scala          |    3 +-
+ .../catalyst/expressions/CodeGenerationSuite.scala |   43 ++++
+ .../expressions/codegen/CodeFormatterSuite.scala   |    3 +-
+ .../columnar/GenerateColumnAccessor.scala          |    5 +-
+ .../scala/org/apache/spark/sql/SQLQuerySuite.scala |  265 ++++++++++++++++++++
+ 15 files changed, 397 insertions(+), 29 deletions(-)
+
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/Expression.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/Expression.scala
+index 6d807c9..09bf2a7 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/Expression.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/Expression.scala
+@@ -95,15 +95,17 @@ abstract class Expression extends TreeNode[Expression] {
+     ctx.subExprEliminationExprs.get(this).map { subExprState =>
+       // This expression is repeated meaning the code to evaluated has already been added
+       // as a function and called in advance. Just use it.
+-      val code = s"/* ${this.toCommentSafeString} */"
+-      GeneratedExpressionCode(code, subExprState.isNull, subExprState.value)
++      GeneratedExpressionCode(
++        ctx.registerComment(this.toString),
++        subExprState.isNull,
++        subExprState.value)
+     }.getOrElse {
+       val isNull = ctx.freshName("isNull")
+       val primitive = ctx.freshName("primitive")
+       val ve = GeneratedExpressionCode("", isNull, primitive)
+       ve.code = genCode(ctx, ve)
+       // Add `this` in the comment.
+-      ve.copy(s"/* ${this.toCommentSafeString} */\n" + ve.code.trim)
++      ve.copy(code = s"${ctx.registerComment(this.toString)}\n" + ve.code.trim)
+     }
+   }
+ 
+@@ -215,14 +217,6 @@ abstract class Expression extends TreeNode[Expression] {
+   override def simpleString: String = toString
+ 
+   override def toString: String = prettyName + flatArguments.mkString("(", ",", ")")
+-
+-  /**
+-   * Returns the string representation of this expression that is safe to be put in
+-   * code comments of generated code.
+-   */
+-  protected def toCommentSafeString: String = this.toString
+-    .replace("*/", "\\*\\/")
+-    .replace("\\u", "\\\\u")
+ }
+ 
+ 
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeFormatter.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeFormatter.scala
+index 9b8b638..84a4566 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeFormatter.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeFormatter.scala
+@@ -17,6 +17,8 @@
+ 
+ package org.apache.spark.sql.catalyst.expressions.codegen
+ 
++import org.apache.commons.lang3.StringUtils
++
+ /**
+  * An utility class that indents a block of code based on the curly braces and parentheses.
+  * This is used to prettify generated code when in debug mode (or exceptions).
+@@ -24,7 +26,14 @@ package org.apache.spark.sql.catalyst.expressions.codegen
+  * Written by Matei Zaharia.
+  */
+ object CodeFormatter {
+-  def format(code: String): String = new CodeFormatter().addLines(code).result()
++  def format(code: CodeAndComment): String = {
++    new CodeFormatter().addLines(
++      StringUtils.replaceEach(
++        code.body,
++        code.comment.keys.toArray,
++        code.comment.values.toArray)
++    ).result
++  }
+ }
+ 
+ private class CodeFormatter {
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeGenerator.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeGenerator.scala
+index 440c7d2..0dec50e 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeGenerator.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeGenerator.scala
+@@ -126,6 +126,11 @@ class CodeGenContext {
+   private val curId = new java.util.concurrent.atomic.AtomicInteger()
+ 
+   /**
++   * The map from a place holder to a corresponding comment
++   */
++  private val placeHolderToComments = new mutable.HashMap[String, String]
++
++  /**
+    * Returns a term name that is unique within this instance of a `CodeGenerator`.
+    *
+    * (Since we aren't in a macro context we do not seem to have access to the built in `freshName`
+@@ -458,6 +463,35 @@ class CodeGenContext {
+     if (doSubexpressionElimination) subexpressionElimination(expressions)
+     expressions.map(e => e.gen(this))
+   }
++
++  /**
++   * get a map of the pair of a place holder and a corresponding comment
++   */
++  def getPlaceHolderToComments(): collection.Map[String, String] = placeHolderToComments
++
++  /**
++   * Register a multi-line comment and return the corresponding place holder
++   */
++  private def registerMultilineComment(text: String): String = {
++    val placeHolder = s"/*${freshName("c")}*/"
++    val comment = text.split("(\r\n)|\r|\n").mkString("/**\n * ", "\n * ", "\n */")
++    placeHolderToComments += (placeHolder -> comment)
++    placeHolder
++  }
++
++  /**
++   * Register a comment and return the corresponding place holder
++   */
++  def registerComment(text: String): String = {
++    if (text.contains("\n") || text.contains("\r")) {
++      registerMultilineComment(text)
++    } else {
++      val placeHolder = s"/*${freshName("c")}*/"
++      val safeComment = s"// $text"
++      placeHolderToComments += (placeHolder -> safeComment)
++      placeHolder
++    }
++  }
+ }
+ 
+ /**
+@@ -469,6 +503,19 @@ abstract class GeneratedClass {
+ }
+ 
+ /**
++ * A wrapper for the source code to be compiled by [[CodeGenerator]].
++ */
++class CodeAndComment(val body: String, val comment: collection.Map[String, String])
++  extends Serializable {
++  override def equals(that: Any): Boolean = that match {
++    case t: CodeAndComment if t.body == body => true
++    case _ => false
++  }
++
++  override def hashCode(): Int = body.hashCode
++}
++
++/**
+  * A base class for generators of byte code to perform expression evaluation.  Includes a set of
+  * helpers for referring to Catalyst types and building trees that perform evaluation of individual
+  * expressions.
+@@ -511,14 +558,14 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] extends Loggin
+   /**
+    * Compile the Java source code into a Java class, using Janino.
+    */
+-  protected def compile(code: String): GeneratedClass = {
++  protected def compile(code: CodeAndComment): GeneratedClass = {
+     cache.get(code)
+   }
+ 
+   /**
+    * Compile the Java source code into a Java class, using Janino.
+    */
+-  private[this] def doCompile(code: String): GeneratedClass = {
++  private[this] def doCompile(code: CodeAndComment): GeneratedClass = {
+     val evaluator = new ClassBodyEvaluator()
+     evaluator.setParentClassLoader(Utils.getContextOrSparkClassLoader)
+     // Cannot be under package codegen, or fail with java.lang.InstantiationException
+@@ -538,7 +585,7 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] extends Loggin
+     ))
+     evaluator.setExtendedClass(classOf[GeneratedClass])
+ 
+-    def formatted = CodeFormatter.format(code)
++    lazy val formatted = CodeFormatter.format(code)
+ 
+     logDebug({
+       // Only add extra debugging info to byte code when we are going to print the source code.
+@@ -547,7 +594,7 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] extends Loggin
+     })
+ 
+     try {
+-      evaluator.cook("generated.java", code)
++      evaluator.cook("generated.java", code.body)
+     } catch {
+       case e: Exception =>
+         val msg = s"failed to compile: $e\n$formatted"
+@@ -569,8 +616,8 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] extends Loggin
+   private val cache = CacheBuilder.newBuilder()
+     .maximumSize(100)
+     .build(
+-      new CacheLoader[String, GeneratedClass]() {
+-        override def load(code: String): GeneratedClass = {
++      new CacheLoader[CodeAndComment, GeneratedClass]() {
++        override def load(code: CodeAndComment): GeneratedClass = {
+           val startTime = System.nanoTime()
+           val result = doCompile(code)
+           val endTime = System.nanoTime()
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodegenFallback.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodegenFallback.scala
+index 26fb143..e78ae7d 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodegenFallback.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodegenFallback.scala
+@@ -32,8 +32,9 @@ trait CodegenFallback extends Expression {
+ 
+     ctx.references += this
+     val objectTerm = ctx.freshName("obj")
++    val placeHolder = ctx.registerComment(this.toString)
+     s"""
+-      /* expression: ${this.toCommentSafeString} */
++      $placeHolder
+       java.lang.Object $objectTerm = expressions[${ctx.references.size - 1}].eval(${ctx.INPUT_ROW});
+       boolean ${ev.isNull} = $objectTerm == null;
+       ${ctx.javaType(this.dataType)} ${ev.value} = ${ctx.defaultValue(this.dataType)};
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateMutableProjection.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateMutableProjection.scala
+index 40189f0..764fbf4 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateMutableProjection.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateMutableProjection.scala
+@@ -81,7 +81,7 @@ object GenerateMutableProjection extends CodeGenerator[Seq[Expression], () => Mu
+     val allProjections = ctx.splitExpressions(ctx.INPUT_ROW, projectionCodes)
+     val allUpdates = ctx.splitExpressions(ctx.INPUT_ROW, updates)
+ 
+-    val code = s"""
++    val codeBody = s"""
+       public java.lang.Object generate($exprType[] expr) {
+         return new SpecificMutableProjection(expr);
+       }
+@@ -119,6 +119,7 @@ object GenerateMutableProjection extends CodeGenerator[Seq[Expression], () => Mu
+       }
+     """
+ 
++    val code = new CodeAndComment(codeBody, ctx.getPlaceHolderToComments())
+     logDebug(s"code for ${expressions.mkString(",")}:\n${CodeFormatter.format(code)}")
+ 
+     val c = compile(code)
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateOrdering.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateOrdering.scala
+index 1af7c73..1ecebbae 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateOrdering.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateOrdering.scala
+@@ -110,7 +110,7 @@ object GenerateOrdering extends CodeGenerator[Seq[SortOrder], Ordering[InternalR
+   protected def create(ordering: Seq[SortOrder]): BaseOrdering = {
+     val ctx = newCodeGenContext()
+     val comparisons = genComparisons(ctx, ordering)
+-    val code = s"""
++    val codeBody = s"""
+       public SpecificOrdering generate($exprType[] expr) {
+         return new SpecificOrdering(expr);
+       }
+@@ -133,6 +133,7 @@ object GenerateOrdering extends CodeGenerator[Seq[SortOrder], Ordering[InternalR
+         }
+       }"""
+ 
++    val code = new CodeAndComment(codeBody, ctx.getPlaceHolderToComments())
+     logDebug(s"Generated Ordering: ${CodeFormatter.format(code)}")
+ 
+     compile(code).generate(ctx.references.toArray).asInstanceOf[BaseOrdering]
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GeneratePredicate.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GeneratePredicate.scala
+index 457b4f0..6397367 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GeneratePredicate.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GeneratePredicate.scala
+@@ -40,7 +40,7 @@ object GeneratePredicate extends CodeGenerator[Expression, (InternalRow) => Bool
+   protected def create(predicate: Expression): ((InternalRow) => Boolean) = {
+     val ctx = newCodeGenContext()
+     val eval = predicate.gen(ctx)
+-    val code = s"""
++    val codeBody = s"""
+       public SpecificPredicate generate($exprType[] expr) {
+         return new SpecificPredicate(expr);
+       }
+@@ -61,6 +61,7 @@ object GeneratePredicate extends CodeGenerator[Expression, (InternalRow) => Bool
+         }
+       }"""
+ 
++    val code = new CodeAndComment(codeBody, ctx.getPlaceHolderToComments())
+     logDebug(s"Generated predicate '$predicate':\n${CodeFormatter.format(code)}")
+ 
+     val p = compile(code).generate(ctx.references.toArray).asInstanceOf[Predicate]
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateProjection.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateProjection.scala
+index f229f20..f8a3b54 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateProjection.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateProjection.scala
+@@ -152,7 +152,7 @@ object GenerateProjection extends CodeGenerator[Seq[Expression], Projection] {
+         s"""if (!nullBits[$i]) arr[$i] = c$i;"""
+     }.mkString("\n")
+ 
+-    val code = s"""
++    val codeBody = s"""
+     public SpecificProjection generate($exprType[] expr) {
+       return new SpecificProjection(expr);
+     }
+@@ -230,6 +230,7 @@ object GenerateProjection extends CodeGenerator[Seq[Expression], Projection] {
+     }
+     """
+ 
++    val code = new CodeAndComment(codeBody, ctx.getPlaceHolderToComments())
+     logDebug(s"MutableRow, initExprs: ${expressions.mkString(",")} code:\n" +
+       CodeFormatter.format(code))
+ 
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateSafeProjection.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateSafeProjection.scala
+index b7926bd..3ae1450 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateSafeProjection.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateSafeProjection.scala
+@@ -147,7 +147,7 @@ object GenerateSafeProjection extends CodeGenerator[Seq[Expression], Projection]
+           """
+     }
+     val allExpressions = ctx.splitExpressions(ctx.INPUT_ROW, expressionCodes)
+-    val code = s"""
++    val codeBody = s"""
+       public java.lang.Object generate($exprType[] expr) {
+         return new SpecificSafeProjection(expr);
+       }
+@@ -173,6 +173,7 @@ object GenerateSafeProjection extends CodeGenerator[Seq[Expression], Projection]
+       }
+     """
+ 
++    val code = new CodeAndComment(codeBody, ctx.getPlaceHolderToComments())
+     logDebug(s"code for ${expressions.mkString(",")}:\n${CodeFormatter.format(code)}")
+ 
+     val c = compile(code)
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeProjection.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeProjection.scala
+index 68005af..6e0b5d1 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeProjection.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeProjection.scala
+@@ -323,7 +323,7 @@ object GenerateUnsafeProjection extends CodeGenerator[Seq[Expression], UnsafePro
+     val ctx = newCodeGenContext()
+     val eval = createCode(ctx, expressions, subexpressionEliminationEnabled)
+ 
+-    val code = s"""
++    val codeBody = s"""
+       public java.lang.Object generate($exprType[] exprs) {
+         return new SpecificUnsafeProjection(exprs);
+       }
+@@ -353,6 +353,7 @@ object GenerateUnsafeProjection extends CodeGenerator[Seq[Expression], UnsafePro
+       }
+       """
+ 
++    val code = new CodeAndComment(codeBody, ctx.getPlaceHolderToComments())
+     logDebug(s"code for ${expressions.mkString(",")}:\n${CodeFormatter.format(code)}")
+ 
+     val c = compile(code)
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala
+index fb3c7b1..b3ebc9c 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala
+@@ -158,7 +158,7 @@ object GenerateUnsafeRowJoiner extends CodeGenerator[(StructType, StructType), U
+     }.mkString("\n")
+ 
+     // ------------------------ Finally, put everything together  --------------------------- //
+-    val code = s"""
++    val codeBody = s"""
+        |public java.lang.Object generate($exprType[] exprs) {
+        |  return new SpecificUnsafeRowJoiner();
+        |}
+@@ -195,6 +195,7 @@ object GenerateUnsafeRowJoiner extends CodeGenerator[(StructType, StructType), U
+        |}
+      """.stripMargin
+ 
++    val code = new CodeAndComment(codeBody, Map.empty)
+     logDebug(s"SpecificUnsafeRowJoiner($schema1, $schema2):\n${CodeFormatter.format(code)}")
+ 
+     val c = compile(code)
+diff --git a/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/expressions/CodeGenerationSuite.scala b/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/expressions/CodeGenerationSuite.scala
+index cd2ef7d..8ad2b10 100644
+--- a/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/expressions/CodeGenerationSuite.scala
++++ b/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/expressions/CodeGenerationSuite.scala
+@@ -116,4 +116,47 @@ class CodeGenerationSuite extends SparkFunSuite with ExpressionEvalHelper {
+       true,
+       InternalRow(UTF8String.fromString("\\u")))
+   }
++
++  test("check compilation error doesn't occur caused by specific literal") {
++    // The end of comment (*/) should be escaped.
++    GenerateUnsafeProjection.generate(
++      Literal.create("*/Compilation error occurs/*", StringType) :: Nil)
++
++    // `\u002A` is `*` and `\u002F` is `/`
++    // so if the end of comment consists of those characters in queries, we need to escape them.
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\u002A/Compilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\\\u002A/Compilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\u002a/Compilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\\\u002a/Compilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("*\\u002FCompilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("*\\\\u002FCompilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("*\\002fCompilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("*\\\\002fCompilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\002A\\002FCompilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\\\002A\\002FCompilation error occurs/*", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\002A\\\\002FCompilation error occurs/*", StringType) :: Nil)
++
++    // \ u002X is an invalid unicode literal so it should be escaped.
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\u002X/Compilation error occurs", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\\\u002X/Compilation error occurs", StringType) :: Nil)
++
++    // \ u001 is an invalid unicode literal so it should be escaped.
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\u001/Compilation error occurs", StringType) :: Nil)
++    GenerateUnsafeProjection.generate(
++      Literal.create("\\\\u001/Compilation error occurs", StringType) :: Nil)
++  }
+ }
+diff --git a/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeFormatterSuite.scala b/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeFormatterSuite.scala
+index 9da1068..55e4f75 100644
+--- a/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeFormatterSuite.scala
++++ b/sql/catalyst/src/test/scala/org/apache/spark/sql/catalyst/expressions/codegen/CodeFormatterSuite.scala
+@@ -24,7 +24,8 @@ class CodeFormatterSuite extends SparkFunSuite {
+ 
+   def testCase(name: String)(input: String)(expected: String): Unit = {
+     test(name) {
+-      assert(CodeFormatter.format(input).trim === expected.trim)
++      val sourceCode = new CodeAndComment(input, Map.empty)
++      assert(CodeFormatter.format(sourceCode).trim === expected.trim)
+     }
+   }
+ 
+diff --git a/sql/core/src/main/scala/org/apache/spark/sql/execution/columnar/GenerateColumnAccessor.scala b/sql/core/src/main/scala/org/apache/spark/sql/execution/columnar/GenerateColumnAccessor.scala
+index eaafc96..1eb2803 100644
+--- a/sql/core/src/main/scala/org/apache/spark/sql/execution/columnar/GenerateColumnAccessor.scala
++++ b/sql/core/src/main/scala/org/apache/spark/sql/execution/columnar/GenerateColumnAccessor.scala
+@@ -20,7 +20,7 @@ package org.apache.spark.sql.execution.columnar
+ import org.apache.spark.Logging
+ import org.apache.spark.sql.catalyst.InternalRow
+ import org.apache.spark.sql.catalyst.expressions._
+-import org.apache.spark.sql.catalyst.expressions.codegen.{UnsafeRowWriter, CodeFormatter, CodeGenerator}
++import org.apache.spark.sql.catalyst.expressions.codegen.{CodeAndComment, CodeFormatter, CodeGenerator, UnsafeRowWriter}
+ import org.apache.spark.sql.types._
+ 
+ /**
+@@ -114,7 +114,7 @@ object GenerateColumnAccessor extends CodeGenerator[Seq[DataType], ColumnarItera
+       (createCode, extract + patch)
+     }.unzip
+ 
+-    val code = s"""
++    val codeBody = s"""
+       import java.nio.ByteBuffer;
+       import java.nio.ByteOrder;
+       import scala.collection.Iterator;
+@@ -188,6 +188,7 @@ object GenerateColumnAccessor extends CodeGenerator[Seq[DataType], ColumnarItera
+         }
+       }"""
+ 
++    val code = new CodeAndComment(codeBody, ctx.getPlaceHolderToComments())
+     logDebug(s"Generated ColumnarIterator: ${CodeFormatter.format(code)}")
+ 
+     compile(code).generate(ctx.references.toArray).asInstanceOf[ColumnarIterator]
+diff --git a/sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala b/sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala
+index f630eb5..2be8343 100644
+--- a/sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala
++++ b/sql/core/src/test/scala/org/apache/spark/sql/SQLQuerySuite.scala
+@@ -2037,4 +2037,269 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
+       checkAnswer(sql("SELECT value['cba'] FROM maptest where key = 1"), Row(null))
+     }
+   }
++
++  test("check code injection is prevented") {
++    // The end of comment (*/) should be escaped.
++    var literal =
++      """|*/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    var expected =
++      """|*/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    // `\u002A` is `*` and `\u002F` is `/`
++    // so if the end of comment consists of those characters in queries, we need to escape them.
++    literal =
++      """|\\u002A/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|\\u002A/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|\\\\u002A/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|\\\\u002A/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|\\u002a/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|\\u002a/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|\\\\u002a/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|\\\\u002a/
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|*\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|*\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|*\\\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|*\\\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|*\\u002f
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|*\\u002f
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|*\\\\u002f
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|*\\\\u002f
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|\\u002A\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|\\u002A\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|\\\\u002A\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|\\\\u002A\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|\\u002A\\\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|\\u002A\\\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++
++    literal =
++      """|\\\\u002A\\\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    expected =
++      """|\\\\u002A\\\\u002F
++         |{
++         |  new Object() {
++         |    void f() { throw new RuntimeException("This exception is injected."); }
++         |  }.f();
++         |}
++         |/*""".stripMargin.replaceAll("\n", "")
++    checkAnswer(
++      sql(s"SELECT '$literal' AS DUMMY"),
++      Row(s"$expected") :: Nil)
++  }
+ }
+-- 
+1.7.9.5
+

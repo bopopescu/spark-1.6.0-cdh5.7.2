@@ -1,0 +1,36 @@
+From e28ea44efdf0108fe9101484522c505d0dba1aea Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Thu, 6 Nov 2014 12:55:59 -0800
+Subject: [PATCH 002/201] CLOUDERA-BUILD. Revert "[SPARK-2805] Upgrade Akka to
+ 2.3.4"
+
+This reverts commit 411cf29fff011561f0093bb6101af87842828369.
+
+(cherry picked from commit b36742cf56ae6c4f0b2d433674c2ee3e519c15e8)
+
+Conflicts:
+	pom.xml
+
+(cherry picked from commit 747a41cea926ae5630c8a74ad7c797b4311c02c7)
+---
+ pom.xml |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 4c70c13..363c563 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -118,8 +118,8 @@
+   <properties>
+     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+-    <akka.group>com.typesafe.akka</akka.group>
+-    <akka.version>2.3.11</akka.version>
++    <akka.group>org.spark-project.akka</akka.group>
++    <akka.version>2.2.3-shaded-protobuf</akka.version>
+     <java.version>1.7</java.version>
+     <maven.version>3.3.3</maven.version>
+     <sbt.project.name>spark</sbt.project.name>
+-- 
+1.7.9.5
+

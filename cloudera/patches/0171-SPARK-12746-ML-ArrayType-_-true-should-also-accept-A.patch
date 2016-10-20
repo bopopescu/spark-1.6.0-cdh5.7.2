@@ -1,0 +1,63 @@
+From a1a28b513c20ec3600a930da6b19d79111c19fa2 Mon Sep 17 00:00:00 2001
+From: Earthson Lu <Earthson.Lu@gmail.com>
+Date: Mon, 22 Feb 2016 23:40:36 -0800
+Subject: [PATCH 171/201] [SPARK-12746][ML] ArrayType(_, true) should also
+ accept ArrayType(_, false) fix for branch-1.6
+
+https://issues.apache.org/jira/browse/SPARK-13359
+
+Author: Earthson Lu <Earthson.Lu@gmail.com>
+
+Closes #11237 from Earthson/SPARK-13359.
+
+(cherry picked from commit d31854da5155550f4e9c5e717c92dfec87d0ff6a)
+---
+ .../apache/spark/ml/feature/CountVectorizer.scala  |    3 ++-
+ .../org/apache/spark/ml/util/SchemaUtils.scala     |   17 +++++++++++++++++
+ 2 files changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/mllib/src/main/scala/org/apache/spark/ml/feature/CountVectorizer.scala b/mllib/src/main/scala/org/apache/spark/ml/feature/CountVectorizer.scala
+index b9e2144..fab3e74 100644
+--- a/mllib/src/main/scala/org/apache/spark/ml/feature/CountVectorizer.scala
++++ b/mllib/src/main/scala/org/apache/spark/ml/feature/CountVectorizer.scala
+@@ -70,7 +70,8 @@ private[feature] trait CountVectorizerParams extends Params with HasInputCol wit
+ 
+   /** Validates and transforms the input schema. */
+   protected def validateAndTransformSchema(schema: StructType): StructType = {
+-    SchemaUtils.checkColumnType(schema, $(inputCol), new ArrayType(StringType, true))
++    val typeCandidates = List(ArrayType(StringType, true), ArrayType(StringType, false))
++    SchemaUtils.checkColumnTypes(schema, $(inputCol), typeCandidates)
+     SchemaUtils.appendColumn(schema, $(outputCol), new VectorUDT)
+   }
+ 
+diff --git a/mllib/src/main/scala/org/apache/spark/ml/util/SchemaUtils.scala b/mllib/src/main/scala/org/apache/spark/ml/util/SchemaUtils.scala
+index 7decbbd..76021ad 100644
+--- a/mllib/src/main/scala/org/apache/spark/ml/util/SchemaUtils.scala
++++ b/mllib/src/main/scala/org/apache/spark/ml/util/SchemaUtils.scala
+@@ -44,6 +44,23 @@ private[spark] object SchemaUtils {
+   }
+ 
+   /**
++    * Check whether the given schema contains a column of one of the require data types.
++    * @param colName  column name
++    * @param dataTypes  required column data types
++    */
++  def checkColumnTypes(
++      schema: StructType,
++      colName: String,
++      dataTypes: Seq[DataType],
++      msg: String = ""): Unit = {
++    val actualDataType = schema(colName).dataType
++    val message = if (msg != null && msg.trim.length > 0) " " + msg else ""
++    require(dataTypes.exists(actualDataType.equals),
++      s"Column $colName must be of type equal to one of the following types: " +
++        s"${dataTypes.mkString("[", ", ", "]")} but was actually of type $actualDataType.$message")
++  }
++
++  /**
+    * Appends a new column to the input schema. This fails if the given output column already exists.
+    * @param schema input schema
+    * @param colName new column name. If this column name is an empty string "", this method returns
+-- 
+1.7.9.5
+

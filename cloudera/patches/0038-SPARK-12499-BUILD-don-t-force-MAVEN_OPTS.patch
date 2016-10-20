@@ -1,0 +1,34 @@
+From b4a365d30999629938c7728829a4f5bafb254a47 Mon Sep 17 00:00:00 2001
+From: Adrian Bridgett <adrian@smop.co.uk>
+Date: Wed, 23 Dec 2015 16:00:03 -0800
+Subject: [PATCH 038/201] [SPARK-12499][BUILD] don't force MAVEN_OPTS
+
+allow the user to override MAVEN_OPTS (2GB wasn't sufficient for me)
+
+Author: Adrian Bridgett <adrian@smop.co.uk>
+
+Closes #10448 from abridgett/feature/do_not_force_maven_opts.
+
+(cherry picked from commit ead6abf7e7fc14b451214951d4991d497aa65e63)
+Signed-off-by: Josh Rosen <joshrosen@databricks.com>
+(cherry picked from commit 5987b1658b837400691160c38ba6eedc47274ee4)
+---
+ make-distribution.sh |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/make-distribution.sh b/make-distribution.sh
+index fd9126f..1021259 100755
+--- a/make-distribution.sh
++++ b/make-distribution.sh
+@@ -167,7 +167,7 @@ fi
+ # Build uber fat JAR
+ cd "$SPARK_HOME"
+ 
+-export MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512M -XX:ReservedCodeCacheSize=512m"
++export MAVEN_OPTS="${MAVEN_OPTS:--Xmx2g -XX:MaxPermSize=512M -XX:ReservedCodeCacheSize=512m}"
+ 
+ # Store the command as an array because $MVN variable might have spaces in it.
+ # Normal quoting tricks don't work.
+-- 
+1.7.9.5
+

@@ -1,0 +1,172 @@
+From 4589fbe0c5153315a650b2a7cca8e0c935789043 Mon Sep 17 00:00:00 2001
+From: Yanbo Liang <ybliang8@gmail.com>
+Date: Wed, 6 Jan 2016 12:05:41 +0530
+Subject: [PATCH 144/201] [SPARK-12393][SPARKR] Add read.text and write.text
+ for SparkR
+
+Add ```read.text``` and ```write.text``` for SparkR.
+cc sun-rui felixcheung shivaram
+
+Author: Yanbo Liang <ybliang8@gmail.com>
+
+Closes #10348 from yanboliang/spark-12393.
+
+(cherry picked from commit d1fea41363c175a67b97cb7b3fe89f9043708739)
+Signed-off-by: Shivaram Venkataraman <shivaram@cs.berkeley.edu>
+(cherry picked from commit c3135d02176cdd679b4a0e4883895b9e9f001a55)
+---
+ R/pkg/NAMESPACE                           |    4 +++-
+ R/pkg/R/DataFrame.R                       |   28 ++++++++++++++++++++++++++++
+ R/pkg/R/SQLContext.R                      |   26 ++++++++++++++++++++++++++
+ R/pkg/R/generics.R                        |    4 ++++
+ R/pkg/inst/tests/testthat/test_sparkSQL.R |   21 +++++++++++++++++++++
+ 5 files changed, 82 insertions(+), 1 deletion(-)
+
+diff --git a/R/pkg/NAMESPACE b/R/pkg/NAMESPACE
+index ccc01fe..beacc39 100644
+--- a/R/pkg/NAMESPACE
++++ b/R/pkg/NAMESPACE
+@@ -94,7 +94,8 @@ exportMethods("arrange",
+               "withColumnRenamed",
+               "write.df",
+               "write.json",
+-              "write.parquet")
++              "write.parquet",
++              "write.text")
+ 
+ exportClasses("Column")
+ 
+@@ -274,6 +275,7 @@ export("as.DataFrame",
+        "parquetFile",
+        "read.df",
+        "read.parquet",
++       "read.text",
+        "sql",
+        "table",
+        "tableNames",
+diff --git a/R/pkg/R/DataFrame.R b/R/pkg/R/DataFrame.R
+index 0cfa12b9..7a7aef2 100644
+--- a/R/pkg/R/DataFrame.R
++++ b/R/pkg/R/DataFrame.R
+@@ -661,6 +661,34 @@ setMethod("saveAsParquetFile",
+             write.parquet(x, path)
+           })
+ 
++#' write.text
++#'
++#' Saves the content of the DataFrame in a text file at the specified path.
++#' The DataFrame must have only one column of string type with the name "value".
++#' Each row becomes a new line in the output file.
++#'
++#' @param x A SparkSQL DataFrame
++#' @param path The directory where the file is saved
++#'
++#' @family DataFrame functions
++#' @rdname write.text
++#' @name write.text
++#' @export
++#' @examples
++#'\dontrun{
++#' sc <- sparkR.init()
++#' sqlContext <- sparkRSQL.init(sc)
++#' path <- "path/to/file.txt"
++#' df <- read.text(sqlContext, path)
++#' write.text(df, "/tmp/sparkr-tmp/")
++#'}
++setMethod("write.text",
++          signature(x = "DataFrame", path = "character"),
++          function(x, path) {
++            write <- callJMethod(x@sdf, "write")
++            invisible(callJMethod(write, "text", path))
++          })
++
+ #' Distinct
+ #'
+ #' Return a new DataFrame containing the distinct rows in this DataFrame.
+diff --git a/R/pkg/R/SQLContext.R b/R/pkg/R/SQLContext.R
+index 9243d70..4436661 100644
+--- a/R/pkg/R/SQLContext.R
++++ b/R/pkg/R/SQLContext.R
+@@ -295,6 +295,32 @@ parquetFile <- function(sqlContext, ...) {
+   dataFrame(sdf)
+ }
+ 
++#' Create a DataFrame from a text file.
++#'
++#' Loads a text file and returns a DataFrame with a single string column named "value".
++#' Each line in the text file is a new row in the resulting DataFrame.
++#'
++#' @param sqlContext SQLContext to use
++#' @param path Path of file to read. A vector of multiple paths is allowed.
++#' @return DataFrame
++#' @rdname read.text
++#' @name read.text
++#' @export
++#' @examples
++#'\dontrun{
++#' sc <- sparkR.init()
++#' sqlContext <- sparkRSQL.init(sc)
++#' path <- "path/to/file.txt"
++#' df <- read.text(sqlContext, path)
++#' }
++read.text <- function(sqlContext, path) {
++  # Allow the user to have a more flexible definiton of the text file path
++  paths <- as.list(suppressWarnings(normalizePath(path)))
++  read <- callJMethod(sqlContext, "read")
++  sdf <- callJMethod(read, "text", paths)
++  dataFrame(sdf)
++}
++
+ #' SQL Query
+ #'
+ #' Executes a SQL query using Spark, returning the result as a DataFrame.
+diff --git a/R/pkg/R/generics.R b/R/pkg/R/generics.R
+index 62be2dd..ba68617 100644
+--- a/R/pkg/R/generics.R
++++ b/R/pkg/R/generics.R
+@@ -549,6 +549,10 @@ setGeneric("write.parquet", function(x, path) { standardGeneric("write.parquet")
+ #' @export
+ setGeneric("saveAsParquetFile", function(x, path) { standardGeneric("saveAsParquetFile") })
+ 
++#' @rdname write.text
++#' @export
++setGeneric("write.text", function(x, path) { standardGeneric("write.text") })
++
+ #' @rdname schema
+ #' @export
+ setGeneric("schema", function(x) { standardGeneric("schema") })
+diff --git a/R/pkg/inst/tests/testthat/test_sparkSQL.R b/R/pkg/inst/tests/testthat/test_sparkSQL.R
+index ee942d2..73f311e 100644
+--- a/R/pkg/inst/tests/testthat/test_sparkSQL.R
++++ b/R/pkg/inst/tests/testthat/test_sparkSQL.R
+@@ -1493,6 +1493,27 @@ test_that("read/write Parquet files", {
+   unlink(parquetPath4)
+ })
+ 
++test_that("read/write text files", {
++  # Test write.df and read.df
++  df <- read.df(sqlContext, jsonPath, "text")
++  expect_is(df, "DataFrame")
++  expect_equal(colnames(df), c("value"))
++  expect_equal(count(df), 3)
++  textPath <- tempfile(pattern = "textPath", fileext = ".txt")
++  write.df(df, textPath, "text", mode="overwrite")
++
++  # Test write.text and read.text
++  textPath2 <- tempfile(pattern = "textPath2", fileext = ".txt")
++  write.text(df, textPath2)
++  df2 <- read.text(sqlContext, c(textPath, textPath2))
++  expect_is(df2, "DataFrame")
++  expect_equal(colnames(df2), c("value"))
++  expect_equal(count(df2), count(df) * 2)
++
++  unlink(textPath)
++  unlink(textPath2)
++})
++
+ test_that("describe() and summarize() on a DataFrame", {
+   df <- read.json(sqlContext, jsonPath)
+   stats <- describe(df, "age")
+-- 
+1.7.9.5
+

@@ -1,0 +1,35 @@
+From c1bdf49b3968e04ddfa2f49ce19123e204211aca Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Wed, 18 Feb 2015 13:26:05 -0800
+Subject: [PATCH 005/201] CLOUDERA-BUILD. CDH-25336. Disable Yarn classpath
+ tests.
+
+The Snappy library used in CDH does not play well with the class
+loaders used when enabling userClassPathFirst.
+
+(cherry picked from commit 45dc8e1427ea06e45c0e31f8b4afba58e970a084)
+---
+ .../spark/deploy/yarn/YarnClusterSuite.scala       |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/yarn/src/test/scala/org/apache/spark/deploy/yarn/YarnClusterSuite.scala b/yarn/src/test/scala/org/apache/spark/deploy/yarn/YarnClusterSuite.scala
+index 6db012a..cdbcd99 100644
+--- a/yarn/src/test/scala/org/apache/spark/deploy/yarn/YarnClusterSuite.scala
++++ b/yarn/src/test/scala/org/apache/spark/deploy/yarn/YarnClusterSuite.scala
+@@ -98,11 +98,11 @@ class YarnClusterSuite extends BaseYarnClusterSuite {
+     testPySpark(false)
+   }
+ 
+-  test("user class path first in client mode") {
++  ignore("user class path first in client mode") {
+     testUseClassPathFirst(true)
+   }
+ 
+-  test("user class path first in cluster mode") {
++  ignore("user class path first in cluster mode") {
+     testUseClassPathFirst(false)
+   }
+ 
+-- 
+1.7.9.5
+

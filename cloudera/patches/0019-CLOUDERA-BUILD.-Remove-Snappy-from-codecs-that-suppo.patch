@@ -1,0 +1,43 @@
+From ff4215307139a9e81d6dc89536dc62184618ff8a Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Thu, 5 Nov 2015 17:03:18 -0800
+Subject: [PATCH 019/201] CLOUDERA-BUILD. Remove Snappy from codecs that
+ support concatenation.
+
+CDH ships an older version of Snappy that doesn't support the feature.
+
+(cherry picked from commit 75db083a7e0ef62e520636919e7d9682f5c1f3aa)
+---
+ .../org/apache/spark/io/CompressionCodec.scala     |    2 +-
+ .../apache/spark/io/CompressionCodecSuite.scala    |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/core/src/main/scala/org/apache/spark/io/CompressionCodec.scala b/core/src/main/scala/org/apache/spark/io/CompressionCodec.scala
+index ca74eed..ba449e7 100644
+--- a/core/src/main/scala/org/apache/spark/io/CompressionCodec.scala
++++ b/core/src/main/scala/org/apache/spark/io/CompressionCodec.scala
+@@ -49,7 +49,7 @@ private[spark] object CompressionCodec {
+   private val configKey = "spark.io.compression.codec"
+ 
+   private[spark] def supportsConcatenationOfSerializedStreams(codec: CompressionCodec): Boolean = {
+-    codec.isInstanceOf[SnappyCompressionCodec] || codec.isInstanceOf[LZFCompressionCodec]
++    codec.isInstanceOf[LZFCompressionCodec]
+   }
+ 
+   private val shortCompressionCodecNames = Map(
+diff --git a/core/src/test/scala/org/apache/spark/io/CompressionCodecSuite.scala b/core/src/test/scala/org/apache/spark/io/CompressionCodecSuite.scala
+index 1553ab6..8c5647a 100644
+--- a/core/src/test/scala/org/apache/spark/io/CompressionCodecSuite.scala
++++ b/core/src/test/scala/org/apache/spark/io/CompressionCodecSuite.scala
+@@ -100,7 +100,7 @@ class CompressionCodecSuite extends SparkFunSuite {
+     testCodec(codec)
+   }
+ 
+-  test("snappy supports concatenation of serialized streams") {
++  ignore("snappy supports concatenation of serialized streams") {
+     val codec = CompressionCodec.createCodec(conf, classOf[SnappyCompressionCodec].getName)
+     assert(codec.getClass === classOf[SnappyCompressionCodec])
+     testConcatenationOfSerializedStreams(codec)
+-- 
+1.7.9.5
+

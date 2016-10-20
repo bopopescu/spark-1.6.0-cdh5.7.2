@@ -1,0 +1,392 @@
+From a816dd1b4859b0064019daa4d48f85e69c9c11d9 Mon Sep 17 00:00:00 2001
+From: Marcelo Vanzin <vanzin@cloudera.com>
+Date: Mon, 3 Aug 2015 17:44:23 -0700
+Subject: [PATCH 012/201] CLOUDERA-BUILD. Use Hive 1.1 for HiveQL execution.
+
+A few changes:
+- Revert to TOK_UNION (instead of TOK_UNIONALL added in 1.2)
+- Set SCRATCHDIR in configuration appropriately so that HiveContext
+  doesn't pollute /tmp
+- Fix some dependencies so that all datanucleus artifacts are compatible.
+- Lock execution and metastore versions since they're the same
+  in CDH. Update VersionsSuite to only test that case (to speed it up).
+- Disable tests that fail on CDH (because it has different deps).
+- Disable code that uses new grammar added in Hive 1.2.
+- Reduce parallelism of a test to avoid shuffle memory tracker issues.
+- Disable the thrift server (not supported in CDH).
+- Disable tests that are incompatible with Hive 1.1 due to incompatible
+  DecimalType support.
+
+(cherry picked from commit 89ac1c547858748b8995cf22d7d9aa298264f6cb)
+---
+ assembly/pom.xml                                   |    5 ----
+ pom.xml                                            |   15 ++++++++----
+ sql/hive/pom.xml                                   |    8 +++++++
+ .../org/apache/spark/sql/hive/HiveContext.scala    |   24 +++++++++++---------
+ .../scala/org/apache/spark/sql/hive/HiveQl.scala   |    5 ++--
+ .../scala/org/apache/spark/sql/hive/HiveShim.scala |    5 ++--
+ .../org/apache/spark/sql/hive/test/TestHive.scala  |    2 +-
+ sql/hive/src/test/resources/log4j.properties       |    7 ++++--
+ .../sql/hive/ClasspathDependenciesSuite.scala      |    4 ++--
+ .../spark/sql/hive/HiveMetastoreCatalogSuite.scala |    6 ++---
+ .../org/apache/spark/sql/hive/HiveQlSuite.scala    |    2 +-
+ .../spark/sql/hive/client/VersionsSuite.scala      |    3 ++-
+ .../spark/sql/hive/execution/SQLQuerySuite.scala   |    2 +-
+ 13 files changed, 51 insertions(+), 37 deletions(-)
+
+diff --git a/assembly/pom.xml b/assembly/pom.xml
+index 1e7b086..fa701a0 100644
+--- a/assembly/pom.xml
++++ b/assembly/pom.xml
+@@ -218,11 +218,6 @@
+     </profile>
+     <profile>
+       <id>hive-thriftserver</id>
+-      <activation>
+-        <property>
+-          <name>cdh.build</name>
+-        </property>
+-      </activation>
+       <dependencies>
+         <dependency>
+           <groupId>org.apache.spark</groupId>
+diff --git a/pom.xml b/pom.xml
+index 1dc5f26..dd52541 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1834,6 +1834,16 @@
+         <version>${datanucleus-core.version}</version>
+       </dependency>
+       <dependency>
++        <groupId>org.datanucleus</groupId>
++        <artifactId>datanucleus-api-jdo</artifactId>
++        <version>3.2.6</version>
++      </dependency>
++      <dependency>
++        <groupId>org.datanucleus</groupId>
++        <artifactId>datanucleus-rdbms</artifactId>
++        <version>3.2.9</version>
++      </dependency>
++      <dependency>
+         <groupId>org.apache.thrift</groupId>
+         <artifactId>libthrift</artifactId>
+         <version>${libthrift.version}</version>
+@@ -2504,11 +2514,6 @@
+ 
+     <profile>
+       <id>hive-thriftserver</id>
+-      <activation>
+-        <property>
+-          <name>cdh.build</name>
+-        </property>
+-      </activation>
+       <modules>
+         <module>sql/hive-thriftserver</module>
+       </modules>
+diff --git a/sql/hive/pom.xml b/sql/hive/pom.xml
+index 291a676..f2cdf31 100644
+--- a/sql/hive/pom.xml
++++ b/sql/hive/pom.xml
+@@ -152,6 +152,14 @@
+       <artifactId>datanucleus-core</artifactId>
+     </dependency>
+     <dependency>
++      <groupId>org.datanucleus</groupId>
++      <artifactId>datanucleus-api-jdo</artifactId>
++    </dependency>
++    <dependency>
++      <groupId>org.datanucleus</groupId>
++      <artifactId>datanucleus-rdbms</artifactId>
++    </dependency>
++    <dependency>
+       <groupId>org.apache.thrift</groupId>
+       <artifactId>libthrift</artifactId>
+     </dependency>
+diff --git a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveContext.scala b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveContext.scala
+index e83941c..b243db4 100644
+--- a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveContext.scala
++++ b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveContext.scala
+@@ -156,7 +156,7 @@ class HiveContext private[hive](
+    * this does not necessarily need to be the same version of Hive that is used internally by
+    * Spark SQL for execution.
+    */
+-  protected[hive] def hiveMetastoreVersion: String = getConf(HIVE_METASTORE_VERSION)
++  protected[hive] def hiveMetastoreVersion: String = hiveExecutionVersion
+ 
+   /**
+    * The location of the jars that should be used to instantiate the HiveMetastoreClient.  This
+@@ -166,7 +166,7 @@ class HiveContext private[hive](
+    *              option is only valid when using the execution version of Hive.
+    *  - maven - download the correct version of hive on demand from maven.
+    */
+-  protected[hive] def hiveMetastoreJars: String = getConf(HIVE_METASTORE_JARS)
++  protected[hive] def hiveMetastoreJars: String = "builtin"
+ 
+   /**
+    * A comma separated list of class prefixes that should be loaded using the classloader that
+@@ -223,7 +223,7 @@ class HiveContext private[hive](
+    *  - allow SQL11 keywords to be used as identifiers
+    */
+   private[sql] def defaultOverrides() = {
+-    setConf(ConfVars.HIVE_SUPPORT_SQL11_RESERVED_KEYWORDS.varname, "false")
++    // setConf(ConfVars.HIVE_SUPPORT_SQL11_RESERVED_KEYWORDS.varname, "false")
+   }
+ 
+   defaultOverrides()
+@@ -252,7 +252,7 @@ class HiveContext private[hive](
+     val isolatedLoader = if (hiveMetastoreJars == "builtin") {
+       if (hiveExecutionVersion != hiveMetastoreVersion) {
+         throw new IllegalArgumentException(
+-          "Builtin jars can only be used when hive execution version == hive metastore version. " +
++          "Builtin jars can only be used when execution version == metastore version. " +
+           s"Execution: ${hiveExecutionVersion} != Metastore: ${hiveMetastoreVersion}. " +
+           "Specify a vaild path to the correct hive jars using $HIVE_METASTORE_JARS " +
+           s"or change ${HIVE_METASTORE_VERSION.key} to $hiveExecutionVersion.")
+@@ -276,7 +276,7 @@ class HiveContext private[hive](
+       }
+ 
+       logInfo(
+-        s"Initializing HiveMetastoreConnection version $hiveMetastoreVersion using Spark classes.")
++        s"Initializing metastore client version $hiveMetastoreVersion using Spark classes.")
+       new IsolatedClientLoader(
+         version = metaVersion,
+         execJars = jars.toSeq,
+@@ -497,14 +497,14 @@ class HiveContext private[hive](
+     Seq(
+       ConfVars.METASTORE_CLIENT_CONNECT_RETRY_DELAY -> TimeUnit.SECONDS,
+       ConfVars.METASTORE_CLIENT_SOCKET_TIMEOUT -> TimeUnit.SECONDS,
+-      ConfVars.METASTORE_CLIENT_SOCKET_LIFETIME -> TimeUnit.SECONDS,
++      // ConfVars.METASTORE_CLIENT_SOCKET_LIFETIME -> TimeUnit.SECONDS,
+       ConfVars.HMSHANDLERINTERVAL -> TimeUnit.MILLISECONDS,
+       ConfVars.METASTORE_EVENT_DB_LISTENER_TTL -> TimeUnit.SECONDS,
+       ConfVars.METASTORE_EVENT_CLEAN_FREQ -> TimeUnit.SECONDS,
+       ConfVars.METASTORE_EVENT_EXPIRY_DURATION -> TimeUnit.SECONDS,
+-      ConfVars.METASTORE_AGGREGATE_STATS_CACHE_TTL -> TimeUnit.SECONDS,
+-      ConfVars.METASTORE_AGGREGATE_STATS_CACHE_MAX_WRITER_WAIT -> TimeUnit.MILLISECONDS,
+-      ConfVars.METASTORE_AGGREGATE_STATS_CACHE_MAX_READER_WAIT -> TimeUnit.MILLISECONDS,
++      // ConfVars.METASTORE_AGGREGATE_STATS_CACHE_TTL -> TimeUnit.SECONDS,
++      // ConfVars.METASTORE_AGGREGATE_STATS_CACHE_MAX_WRITER_WAIT -> TimeUnit.MILLISECONDS,
++      // ConfVars.METASTORE_AGGREGATE_STATS_CACHE_MAX_READER_WAIT -> TimeUnit.MILLISECONDS,
+       ConfVars.HIVES_AUTO_PROGRESS_TIMEOUT -> TimeUnit.SECONDS,
+       ConfVars.HIVE_LOG_INCREMENTAL_PLAN_PROGRESS_INTERVAL -> TimeUnit.MILLISECONDS,
+       ConfVars.HIVE_STATS_JDBC_TIMEOUT -> TimeUnit.SECONDS,
+@@ -518,7 +518,7 @@ class HiveContext private[hive](
+       ConfVars.HIVE_COMPACTOR_CLEANER_RUN_INTERVAL -> TimeUnit.MILLISECONDS,
+       ConfVars.HIVE_SERVER2_THRIFT_HTTP_MAX_IDLE_TIME -> TimeUnit.MILLISECONDS,
+       ConfVars.HIVE_SERVER2_THRIFT_HTTP_WORKER_KEEPALIVE_TIME -> TimeUnit.SECONDS,
+-      ConfVars.HIVE_SERVER2_THRIFT_HTTP_COOKIE_MAX_AGE -> TimeUnit.SECONDS,
++      // ConfVars.HIVE_SERVER2_THRIFT_HTTP_COOKIE_MAX_AGE -> TimeUnit.SECONDS,
+       ConfVars.HIVE_SERVER2_THRIFT_LOGIN_BEBACKOFF_SLOT_LENGTH -> TimeUnit.MILLISECONDS,
+       ConfVars.HIVE_SERVER2_THRIFT_LOGIN_TIMEOUT -> TimeUnit.SECONDS,
+       ConfVars.HIVE_SERVER2_THRIFT_WORKER_KEEPALIVE_TIME -> TimeUnit.SECONDS,
+@@ -659,7 +659,7 @@ class HiveContext private[hive](
+ 
+ private[hive] object HiveContext {
+   /** The version of hive used internally by Spark SQL. */
+-  val hiveExecutionVersion: String = "1.2.1"
++  val hiveExecutionVersion: String = "1.1.0"
+ 
+   val HIVE_METASTORE_VERSION = stringConf("spark.sql.hive.metastore.version",
+     defaultValue = Some(hiveExecutionVersion),
+@@ -724,6 +724,7 @@ private[hive] object HiveContext {
+   def newTemporaryConfiguration(): Map[String, String] = {
+     val tempDir = Utils.createTempDir()
+     val localMetastore = new File(tempDir, "metastore")
++    val scratchDir = new File(tempDir, "scratch")
+     val propMap: HashMap[String, String] = HashMap()
+     // We have to mask all properties in hive-site.xml that relates to metastore data source
+     // as we used a local metastore here.
+@@ -736,6 +737,7 @@ private[hive] object HiveContext {
+     propMap.put(HiveConf.ConfVars.METASTOREWAREHOUSE.varname, localMetastore.toURI.toString)
+     propMap.put(HiveConf.ConfVars.METASTORECONNECTURLKEY.varname,
+       s"jdbc:derby:;databaseName=${localMetastore.getAbsolutePath};create=true")
++    propMap.put(HiveConf.ConfVars.SCRATCHDIR.varname, scratchDir.toURI.toString)
+     propMap.put("datanucleus.rdbms.datastoreAdapterClassName",
+       "org.datanucleus.store.rdbms.adapter.DerbyAdapter")
+ 
+diff --git a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveQl.scala b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveQl.scala
+index 091caab..d14b98d 100644
+--- a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveQl.scala
++++ b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveQl.scala
+@@ -1209,8 +1209,7 @@ https://cwiki.apache.org/confluence/display/Hive/Enhanced+Aggregation%2C+Cube%2C
+       // return With plan if there is CTE
+       cteRelations.map(With(query, _)).getOrElse(query)
+ 
+-    // HIVE-9039 renamed TOK_UNION => TOK_UNIONALL while adding TOK_UNIONDISTINCT
+-    case Token("TOK_UNIONALL", left :: right :: Nil) =>
++    case Token("TOK_UNION", left :: right :: Nil) =>
+       Union(nodeToPlan(left, context), nodeToPlan(right, context))
+ 
+     case a: ASTNode =>
+@@ -1693,6 +1692,7 @@ https://cwiki.apache.org/confluence/display/Hive/Enhanced+Aggregation%2C+Cube%2C
+     case ast: ASTNode if ast.getType == HiveParser.TOK_CHARSETLITERAL =>
+       Literal(BaseSemanticAnalyzer.charSetString(ast.getChild(0).getText, ast.getChild(1).getText))
+ 
++    /*
+     case ast: ASTNode if ast.getType == HiveParser.TOK_INTERVAL_YEAR_MONTH_LITERAL =>
+       Literal(CalendarInterval.fromYearMonthString(ast.getText))
+ 
+@@ -1716,6 +1716,7 @@ https://cwiki.apache.org/confluence/display/Hive/Enhanced+Aggregation%2C+Cube%2C
+ 
+     case ast: ASTNode if ast.getType == HiveParser.TOK_INTERVAL_SECOND_LITERAL =>
+       Literal(CalendarInterval.fromSingleUnitString("second", ast.getText))
++    */
+ 
+     case a: ASTNode =>
+       throw new NotImplementedError(
+diff --git a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala
+index f069761..265df3d 100644
+--- a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala
++++ b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveShim.scala
+@@ -26,9 +26,6 @@ import scala.collection.JavaConverters._
+ import scala.language.implicitConversions
+ import scala.reflect.ClassTag
+ 
+-import com.esotericsoftware.kryo.Kryo
+-import com.esotericsoftware.kryo.io.{Input, Output}
+-
+ import org.apache.hadoop.conf.Configuration
+ import org.apache.hadoop.fs.Path
+ import org.apache.hadoop.hive.ql.exec.{UDF, Utilities}
+@@ -37,6 +34,8 @@ import org.apache.hadoop.hive.serde2.ColumnProjectionUtils
+ import org.apache.hadoop.hive.serde2.avro.{AvroGenericRecordWritable, AvroSerdeUtils}
+ import org.apache.hadoop.hive.serde2.objectinspector.primitive.HiveDecimalObjectInspector
+ import org.apache.hadoop.io.Writable
++import org.apache.hive.com.esotericsoftware.kryo.Kryo
++import org.apache.hive.com.esotericsoftware.kryo.io.{Input, Output}
+ 
+ import org.apache.spark.Logging
+ import org.apache.spark.sql.types.Decimal
+diff --git a/sql/hive/src/main/scala/org/apache/spark/sql/hive/test/TestHive.scala b/sql/hive/src/main/scala/org/apache/spark/sql/hive/test/TestHive.scala
+index 2e2d201..24b4065 100644
+--- a/sql/hive/src/main/scala/org/apache/spark/sql/hive/test/TestHive.scala
++++ b/sql/hive/src/main/scala/org/apache/spark/sql/hive/test/TestHive.scala
+@@ -42,7 +42,7 @@ import org.apache.spark.{SparkConf, SparkContext}
+ object TestHive
+   extends TestHiveContext(
+     new SparkContext(
+-      System.getProperty("spark.sql.test.master", "local[32]"),
++      System.getProperty("spark.sql.test.master", "local[4]"),
+       "TestSQLContext",
+       new SparkConf()
+         .set("spark.sql.test", "")
+diff --git a/sql/hive/src/test/resources/log4j.properties b/sql/hive/src/test/resources/log4j.properties
+index fea3404..06beb07 100644
+--- a/sql/hive/src/test/resources/log4j.properties
++++ b/sql/hive/src/test/resources/log4j.properties
+@@ -39,14 +39,17 @@ log4j.appender.FA.Threshold = DEBUG
+ log4j.additivity.org.apache.hadoop.hive.serde2.lazy.LazyStruct=false
+ log4j.logger.org.apache.hadoop.hive.serde2.lazy.LazyStruct=OFF
+ 
++log4j.additivity.org.apache.hadoop.hive.metastore.HiveMetaStore=false
++log4j.logger.org.apache.hadoop.hive.metastore.HiveMetaStore=ERROR
++
+ log4j.additivity.org.apache.hadoop.hive.metastore.RetryingHMSHandler=false
+ log4j.logger.org.apache.hadoop.hive.metastore.RetryingHMSHandler=OFF
+ 
+ log4j.additivity.hive.log=false
+ log4j.logger.hive.log=OFF
+ 
+-log4j.additivity.parquet.hadoop.ParquetRecordReader=false
+-log4j.logger.parquet.hadoop.ParquetRecordReader=OFF
++log4j.additivity.parquet.hadoop=false
++log4j.logger.parquet.hadoop=ERROR
+ 
+ log4j.additivity.org.apache.parquet.hadoop.ParquetRecordReader=false
+ log4j.logger.org.apache.parquet.hadoop.ParquetRecordReader=OFF
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/ClasspathDependenciesSuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/ClasspathDependenciesSuite.scala
+index 34b2edb..03f707e 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/ClasspathDependenciesSuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/ClasspathDependenciesSuite.scala
+@@ -72,7 +72,7 @@ class ClasspathDependenciesSuite extends SparkFunSuite {
+   private val SPARK_HIVE = "org.apache.hive."
+   private val SPARK_SHADED = "org.spark-project.hive.shaded."
+ 
+-  test("shaded Protobuf") {
++  ignore("shaded Protobuf") {
+     assertLoads(SPARK_SHADED + "com.google.protobuf.ServiceException")
+   }
+ 
+@@ -90,7 +90,7 @@ class ClasspathDependenciesSuite extends SparkFunSuite {
+     assertLoads(KRYO, STD_INSTANTIATOR)
+   }
+ 
+-  test("Forbidden Dependencies") {
++  ignore("Forbidden Dependencies") {
+     assertClassNotFound(
+       SPARK_HIVE + KRYO,
+       SPARK_SHADED + KRYO,
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveMetastoreCatalogSuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveMetastoreCatalogSuite.scala
+index d63f3d3..9ed6c93 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveMetastoreCatalogSuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveMetastoreCatalogSuite.scala
+@@ -72,7 +72,7 @@ class DataSourceWithHiveMetastoreCatalogSuite
+       "org.apache.hadoop.hive.ql.io.orc.OrcSerde"
+     )
+   ).foreach { case (provider, (inputFormat, outputFormat, serde)) =>
+-    test(s"Persist non-partitioned $provider relation into metastore as managed table") {
++    ignore(s"Persist non-partitioned $provider relation into metastore as managed table") {
+       withTable("t") {
+         withSQLConf(SQLConf.PARQUET_WRITE_LEGACY_FORMAT.key -> "true") {
+           testDF
+@@ -99,7 +99,7 @@ class DataSourceWithHiveMetastoreCatalogSuite
+       }
+     }
+ 
+-    test(s"Persist non-partitioned $provider relation into metastore as external table") {
++    ignore(s"Persist non-partitioned $provider relation into metastore as external table") {
+       withTempPath { dir =>
+         withTable("t") {
+           val path = dir.getCanonicalFile
+@@ -131,7 +131,7 @@ class DataSourceWithHiveMetastoreCatalogSuite
+       }
+     }
+ 
+-    test(s"Persist non-partitioned $provider relation into metastore as managed table using CTAS") {
++    ignore(s"Persist non-partitioned $provider relation into metastore as managed table using CTAS") {
+       withTempPath { dir =>
+         withTable("t") {
+           val path = dir.getCanonicalPath
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveQlSuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveQlSuite.scala
+index a330362..e59ceda 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveQlSuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/HiveQlSuite.scala
+@@ -171,7 +171,7 @@ class HiveQlSuite extends SparkFunSuite with BeforeAndAfterAll {
+     assert(desc.properties == Map(("tbl_p1" -> "p11"), ("tbl_p2" -> "p22")))
+   }
+ 
+-  test("Invalid interval term should throw AnalysisException") {
++  ignore("Invalid interval term should throw AnalysisException") {
+     def assertError(sql: String, errorMessage: String): Unit = {
+       val e = intercept[AnalysisException] {
+         HiveQl.parseSql(sql)
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/client/VersionsSuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/client/VersionsSuite.scala
+index 502b240..ff389bf 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/client/VersionsSuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/client/VersionsSuite.scala
+@@ -99,7 +99,8 @@ class VersionsSuite extends SparkFunSuite with Logging {
+     assert(getNestedMessages(e) contains "Unknown column 'A0.OWNER_NAME' in 'field list'")
+   }
+ 
+-  private val versions = Seq("12", "13", "14", "1.0.0", "1.1.0", "1.2.0")
++  // private val versions = Seq("12", "13", "14", "1.0.0", "1.1.0", "1.2.0")
++  private val versions = Seq("1.1.0")
+ 
+   private var client: ClientInterface = null
+ 
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/SQLQuerySuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/SQLQuerySuite.scala
+index 3427152..87ca5b9 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/SQLQuerySuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/execution/SQLQuerySuite.scala
+@@ -1155,7 +1155,7 @@ class SQLQuerySuite extends QueryTest with SQLTestUtils with TestHiveSingleton {
+     checkAnswer(sql("SELECT a.`c.b`, `b.$q`[0].`a@!.q`, `q.w`.`w.i&`[0] FROM t"), Row(1, 1, 1))
+   }
+ 
+-  test("Convert hive interval term into Literal of CalendarIntervalType") {
++  ignore("Convert hive interval term into Literal of CalendarIntervalType") {
+     checkAnswer(sql("select interval '10-9' year to month"),
+       Row(CalendarInterval.fromString("interval 10 years 9 months")))
+     checkAnswer(sql("select interval '20 15:40:32.99899999' day to second"),
+-- 
+1.7.9.5
+

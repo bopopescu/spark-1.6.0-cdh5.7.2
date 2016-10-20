@@ -1,0 +1,83 @@
+From 26a99b5b14fbe3ee9e0390f18f89c77567acd483 Mon Sep 17 00:00:00 2001
+From: Sameer Agarwal <sameer@databricks.com>
+Date: Tue, 26 Jan 2016 07:50:37 -0800
+Subject: [PATCH 137/201] [SPARK-12682][SQL] Add support for (optionally) not
+ storing tables in hive metadata format
+
+This PR adds a new table option (`skip_hive_metadata`) that'd allow the user to skip storing the table metadata in hive metadata format. While this could be useful in general, the specific use-case for this change is that Hive doesn't handle wide schemas well (see https://issues.apache.org/jira/browse/SPARK-12682 and https://issues.apache.org/jira/browse/SPARK-6024) which in turn prevents such tables from being queried in SparkSQL.
+
+Author: Sameer Agarwal <sameer@databricks.com>
+
+Closes #10826 from sameeragarwal/skip-hive-metadata.
+
+(cherry picked from commit 08c781ca672820be9ba32838bbe40d2643c4bde4)
+Signed-off-by: Yin Huai <yhuai@databricks.com>
+(cherry picked from commit f0c98a60f0b4982dc8e29b4a5d213fd8ce4abaf2)
+---
+ .../spark/sql/hive/HiveMetastoreCatalog.scala      |    7 +++++
+ .../spark/sql/hive/MetastoreDataSourcesSuite.scala |   32 ++++++++++++++++++++
+ 2 files changed, 39 insertions(+)
+
+diff --git a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveMetastoreCatalog.scala b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveMetastoreCatalog.scala
+index f099e14..c59e09f 100644
+--- a/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveMetastoreCatalog.scala
++++ b/sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveMetastoreCatalog.scala
+@@ -303,7 +303,14 @@ private[hive] class HiveMetastoreCatalog(val client: ClientInterface, hive: Hive
+ 
+     // TODO: Support persisting partitioned data source relations in Hive compatible format
+     val qualifiedTableName = tableIdent.quotedString
++    val skipHiveMetadata = options.getOrElse("skipHiveMetadata", "false").toBoolean
+     val (hiveCompatibleTable, logMessage) = (maybeSerDe, dataSource.relation) match {
++      case _ if skipHiveMetadata =>
++        val message =
++          s"Persisting partitioned data source relation $qualifiedTableName into " +
++            "Hive metastore in Spark SQL specific format, which is NOT compatible with Hive."
++        (None, message)
++
+       case (Some(serde), relation: HadoopFsRelation)
+         if relation.paths.length == 1 && relation.partitionColumns.isEmpty =>
+         val hiveTable = newHiveCompatibleMetastoreTable(relation, serde)
+diff --git a/sql/hive/src/test/scala/org/apache/spark/sql/hive/MetastoreDataSourcesSuite.scala b/sql/hive/src/test/scala/org/apache/spark/sql/hive/MetastoreDataSourcesSuite.scala
+index f74eb15..2061d2c 100644
+--- a/sql/hive/src/test/scala/org/apache/spark/sql/hive/MetastoreDataSourcesSuite.scala
++++ b/sql/hive/src/test/scala/org/apache/spark/sql/hive/MetastoreDataSourcesSuite.scala
+@@ -846,4 +846,36 @@ class MetastoreDataSourcesSuite extends QueryTest with SQLTestUtils with TestHiv
+     sqlContext.sql("""use default""")
+     sqlContext.sql("""drop database if exists testdb8156 CASCADE""")
+   }
++
++  test("skip hive metadata on table creation") {
++    val schema = StructType((1 to 5).map(i => StructField(s"c_$i", StringType)))
++
++    catalog.createDataSourceTable(
++      tableIdent = TableIdentifier("not_skip_hive_metadata"),
++      userSpecifiedSchema = Some(schema),
++      partitionColumns = Array.empty[String],
++      bucketSpec = None,
++      provider = "parquet",
++      options = Map("path" -> "just a dummy path", "skipHiveMetadata" -> "false"),
++      isExternal = false)
++
++    // As a proxy for verifying that the table was stored in Hive compatible format, we verify that
++    // each column of the table is of native type StringType.
++    assert(catalog.client.getTable("default", "not_skip_hive_metadata").schema
++      .forall(column => HiveMetastoreTypes.toDataType(column.hiveType) == StringType))
++
++    catalog.createDataSourceTable(
++      tableIdent = TableIdentifier("skip_hive_metadata"),
++      userSpecifiedSchema = Some(schema),
++      partitionColumns = Array.empty[String],
++      bucketSpec = None,
++      provider = "parquet",
++      options = Map("path" -> "just a dummy path", "skipHiveMetadata" -> "true"),
++      isExternal = false)
++
++    // As a proxy for verifying that the table was stored in SparkSQL format, we verify that
++    // the table has a column type as array of StringType.
++    assert(catalog.client.getTable("default", "skip_hive_metadata").schema
++      .forall(column => HiveMetastoreTypes.toDataType(column.hiveType) == ArrayType(StringType)))
++  }
+ }
+-- 
+1.7.9.5
+

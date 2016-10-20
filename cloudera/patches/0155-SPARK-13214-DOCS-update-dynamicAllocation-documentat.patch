@@ -1,0 +1,35 @@
+From 1b306a01c459cc1645620dd12252c3a0c4f63a3c Mon Sep 17 00:00:00 2001
+From: Bill Chambers <bill@databricks.com>
+Date: Fri, 5 Feb 2016 14:35:39 -0800
+Subject: [PATCH 155/201] [SPARK-13214][DOCS] update dynamicAllocation
+ documentation
+
+Author: Bill Chambers <bill@databricks.com>
+
+Closes #11094 from anabranch/dynamic-docs.
+
+(cherry picked from commit 66e1383de2650a0f06929db8109a02e32c5eaf6b)
+Signed-off-by: Andrew Or <andrew@databricks.com>
+(cherry picked from commit 3ca5dc3072d0d96ba07d102e9104cbbb177c352b)
+---
+ docs/configuration.md |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/docs/configuration.md b/docs/configuration.md
+index 44cdc68..5cf0705 100644
+--- a/docs/configuration.md
++++ b/docs/configuration.md
+@@ -1290,8 +1290,8 @@ Apart from these, the following properties are also available, and may be useful
+   <td>false</td>
+   <td>
+     Whether to use dynamic resource allocation, which scales the number of executors registered
+-    with this application up and down based on the workload. Note that this is currently only
+-    available on YARN mode. For more detail, see the description
++    with this application up and down based on the workload. 
++    For more detail, see the description
+     <a href="job-scheduling.html#dynamic-resource-allocation">here</a>.
+     <br><br>
+     This requires <code>spark.shuffle.service.enabled</code> to be set.
+-- 
+1.7.9.5
+

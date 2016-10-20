@@ -1,0 +1,53 @@
+From 81811448ee7e633822d6c2e347cfbc17fe747b0c Mon Sep 17 00:00:00 2001
+From: Xusen Yin <yinxusen@gmail.com>
+Date: Tue, 2 Feb 2016 10:21:21 -0800
+Subject: [PATCH 118/201] [SPARK-12780][ML][PYTHON][BACKPORT] Inconsistency
+ returning value of ML python models' properties
+
+Backport of [SPARK-12780] for branch-1.6
+
+Original PR for master: https://github.com/apache/spark/pull/10724
+
+This fixes StringIndexerModel.labels in pyspark.
+
+Author: Xusen Yin <yinxusen@gmail.com>
+
+Closes #10950 from jkbradley/yinxusen-spark-12780-backport.
+
+(cherry picked from commit 9a3d1bd09cdf4a7c2992525c203d4dac764fddb8)
+---
+ python/pyspark/ml/feature.py |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/python/pyspark/ml/feature.py b/python/pyspark/ml/feature.py
+index b02d41b..ea874dc 100644
+--- a/python/pyspark/ml/feature.py
++++ b/python/pyspark/ml/feature.py
+@@ -1263,7 +1263,7 @@ class StringIndexer(JavaEstimator, HasInputCol, HasOutputCol, HasHandleInvalid):
+     >>> sorted(set([(i[0], i[1]) for i in td.select(td.id, td.indexed).collect()]),
+     ...     key=lambda x: x[0])
+     [(0, 0.0), (1, 2.0), (2, 1.0), (3, 0.0), (4, 0.0), (5, 1.0)]
+-    >>> inverter = IndexToString(inputCol="indexed", outputCol="label2", labels=model.labels())
++    >>> inverter = IndexToString(inputCol="indexed", outputCol="label2", labels=model.labels)
+     >>> itd = inverter.transform(td)
+     >>> sorted(set([(i[0], str(i[1])) for i in itd.select(itd.id, itd.label2).collect()]),
+     ...     key=lambda x: x[0])
+@@ -1305,13 +1305,14 @@ class StringIndexerModel(JavaModel):
+ 
+     .. versionadded:: 1.4.0
+     """
++
+     @property
+     @since("1.5.0")
+     def labels(self):
+         """
+         Ordered list of labels, corresponding to indices to be assigned.
+         """
+-        return self._java_obj.labels
++        return self._call_java("labels")
+ 
+ 
+ @inherit_doc
+-- 
+1.7.9.5
+

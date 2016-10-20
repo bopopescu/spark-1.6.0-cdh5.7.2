@@ -1,0 +1,38 @@
+From 13f107a94bde6fdd24e1cc2baef22f407fb92804 Mon Sep 17 00:00:00 2001
+From: Brandon Bradley <bradleytastic@gmail.com>
+Date: Mon, 11 Jan 2016 14:21:50 -0800
+Subject: [PATCH 146/201] [SPARK-12758][SQL] add note to Spark SQL Migration
+ guide about TimestampType casting
+
+Warning users about casting changes.
+
+Author: Brandon Bradley <bradleytastic@gmail.com>
+
+Closes #10708 from blbradley/spark-12758.
+
+(cherry picked from commit a767ee8a0599f5482717493a3298413c65d8ff89)
+Signed-off-by: Michael Armbrust <michael@databricks.com>
+(cherry picked from commit dd2cf64f300ec42802dbea38b95047842de81870)
+---
+ docs/sql-programming-guide.md |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/docs/sql-programming-guide.md b/docs/sql-programming-guide.md
+index 8015200..bd1585f 100644
+--- a/docs/sql-programming-guide.md
++++ b/docs/sql-programming-guide.md
+@@ -2151,6 +2151,11 @@ options.
+      ...
+    {% endhighlight %}
+ 
++ - From Spark 1.6, LongType casts to TimestampType expect seconds instead of microseconds. This
++   change was made to match the behavior of Hive 1.2 for more consistent type casting to TimestampType
++   from numeric types. See [SPARK-11724](https://issues.apache.org/jira/browse/SPARK-11724) for
++   details.
++
+ ## Upgrading From Spark SQL 1.4 to 1.5
+ 
+  - Optimized execution using manually managed memory (Tungsten) is now enabled by default, along with
+-- 
+1.7.9.5
+

@@ -1,0 +1,59 @@
+From e5d145309e9e0e10880be7854bcf0c53e1bb8425 Mon Sep 17 00:00:00 2001
+From: Pete Robbins <robbinspg@gmail.com>
+Date: Mon, 4 Jan 2016 10:43:21 -0800
+Subject: [PATCH 050/201] [SPARK-12470] [SQL] Fix size reduction calculation
+
+also only allocate required buffer size
+
+Author: Pete Robbins <robbinspg@gmail.com>
+
+Closes #10421 from robbinspg/master.
+
+(cherry picked from commit b504b6a90a95a723210beb0031ed41a75d702f66)
+Signed-off-by: Davies Liu <davies.liu@gmail.com>
+
+Conflicts:
+	sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala
+
+(cherry picked from commit b5a1f564a3c099ef0b674599f0b012d9346115a3)
+---
+ .../codegen/GenerateUnsafeRowJoiner.scala          |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala
+index da602d9..fb3c7b1 100644
+--- a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala
++++ b/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/GenerateUnsafeRowJoiner.scala
+@@ -61,9 +61,9 @@ object GenerateUnsafeRowJoiner extends CodeGenerator[(StructType, StructType), U
+     val outputBitsetWords = (schema1.size + schema2.size + 63) / 64
+     val bitset1Remainder = schema1.size % 64
+ 
+-    // The number of words we can reduce when we concat two rows together.
++    // The number of bytes we can reduce when we concat two rows together.
+     // The only reduction comes from merging the bitset portion of the two rows, saving 1 word.
+-    val sizeReduction = bitset1Words + bitset2Words - outputBitsetWords
++    val sizeReduction = (bitset1Words + bitset2Words - outputBitsetWords) * 8
+ 
+     // --------------------- copy bitset from row 1 and row 2 --------------------------- //
+     val copyBitset = Seq.tabulate(outputBitsetWords) { i =>
+@@ -171,7 +171,7 @@ object GenerateUnsafeRowJoiner extends CodeGenerator[(StructType, StructType), U
+        |    // row1: ${schema1.size} fields, $bitset1Words words in bitset
+        |    // row2: ${schema2.size}, $bitset2Words words in bitset
+        |    // output: ${schema1.size + schema2.size} fields, $outputBitsetWords words in bitset
+-       |    final int sizeInBytes = row1.getSizeInBytes() + row2.getSizeInBytes();
++       |    final int sizeInBytes = row1.getSizeInBytes() + row2.getSizeInBytes() - $sizeReduction;
+        |    if (sizeInBytes > buf.length) {
+        |      buf = new byte[sizeInBytes];
+        |    }
+@@ -188,7 +188,7 @@ object GenerateUnsafeRowJoiner extends CodeGenerator[(StructType, StructType), U
+        |    $copyVariableLengthRow2
+        |    $updateOffset
+        |
+-       |    out.pointTo(buf, ${schema1.size + schema2.size}, sizeInBytes - $sizeReduction);
++       |    out.pointTo(buf, ${schema1.size + schema2.size}, sizeInBytes);
+        |
+        |    return out;
+        |  }
+-- 
+1.7.9.5
+
